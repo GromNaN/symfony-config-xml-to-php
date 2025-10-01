@@ -139,6 +139,10 @@ function xmlToPhpDslValue($argument)
         return $call;
     }
 
+    if ($argType !== null) {
+        throw new \RuntimeException(\sprintf('Unsupported conversion for the argument type "%s".', $argType));
+    }
+
     return inline_var_export(convertValueToPhp($argValue));
 }
 
