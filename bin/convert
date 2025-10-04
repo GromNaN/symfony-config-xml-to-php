@@ -1,0 +1,12 @@
+#!/usr/bin/env php
+<?php
+
+use GromNaN\SymfonyConfigXmlToPhp\ConvertCommand;
+use Symfony\Component\Console\Application;
+
+require_once __DIR__ . '/../vendor/autoload.php';
+
+$console = new Application();
+$console->add(new ConvertCommand());
+$console->setDefaultCommand('convert', true);
+$console->run();

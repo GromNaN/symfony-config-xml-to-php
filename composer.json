@@ -1,0 +1,20 @@
+{
+    "name": "gromnan/symfony-config-xml-to-php",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "GromNaN\\SymfonyConfigXmlToPhp\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Jérôme Tamarelle",
+            "email": "jerome@tamarelle.net"
+        }
+    ],
+    "require-dev": {
+        "symfony/dependency-injection": "^7.3",
+        "symfony/routing": "^7.3",
+        "symfony/console": "^7.3"
+    }
+}
