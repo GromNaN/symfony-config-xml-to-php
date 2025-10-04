@@ -5,7 +5,6 @@ namespace GromNaN\SymfonyConfigXmlToPhp;
 class XmlToPhpConfigConverter
 {
     private int $indentLevel;
-    private string $output;
 
     /**
      * Convert an XML configuration file to PHP configuration
@@ -26,39 +25,40 @@ class XmlToPhpConfigConverter
         $dom->load($xmlPath);
 
         $this->indentLevel = 0;
-        $this->output = '';
+        $output = '';
 
         // Start the PHP output with the necessary namespace and function
-        $this->output .= $this->nl().'<?php';
-        $this->output .= $this->nl(0);
-        $this->output .= $this->nl().'namespace Symfony\Component\DependencyInjection\Loader\Configurator;';
-        $this->output .= $this->nl(0);
-        $this->output .= $this->nl().'return static function(ContainerConfigurator $container) {';
-        $this->output .= $this->nl().'    $services = $container->services();';
-        $this->output .= $this->nl().'    $parameters = $container->parameters();';
+        $output .= $this->nl().'<?php';
+        $output .= $this->nl(0);
+        $output .= $this->nl().'namespace Symfony\Component\DependencyInjection\Loader\Configurator;';
+        $output .= $this->nl(0);
+        $output .= $this->nl().'return static function(ContainerConfigurator $container) {';
+        $output .= $this->nl().'    $services = $container->services();';
+        $output .= $this->nl().'    $parameters = $container->parameters();';
 
         // Process the root container element and its children
         $this->indentLevel++;
         $root = $dom->documentElement;
-        $this->processChildNodes($root);
+        $output .= $this->processChildNodes($root);
         $this->indentLevel--;
 
         // Close the function
-        $this->output .= $this->nl().'};';
+        $output .= $this->nl().'};';
 
-        return $this->output;
+        return $output;
     }
 
     /**
      * Process the child nodes of an element
      */
-    private function processChildNodes(\DOMNode $node): void
+    private function processChildNodes(\DOMNode $node): string
     {
         $childNodes = $node->childNodes;
+        $output = '';
         foreach ($childNodes as $childNode) {
             // Process comments
             if ($childNode instanceof \DOMComment) {
-                $this->addComment($childNode->nodeValue);
+                $output .= $this->addComment($childNode->nodeValue);
                 continue;
             }
 
@@ -69,17 +69,19 @@ class XmlToPhpConfigConverter
 
             // Process element nodes
             if ($childNode instanceof \DOMElement) {
-                $this->processElement($childNode);
+                $output .= $this->processElement($childNode);
             }
         }
+
+        return $output;
     }
 
     /**
      * Process an XML element and convert it to PHP
      */
-    private function processElement(\DOMElement $element): void
+    private function processElement(\DOMElement $element): string
     {
-        match ($element->nodeName) {
+        return match ($element->nodeName) {
             'imports' => $this->processImports($element),
             'parameters' => $this->processParameters($element),
             'services' => $this->processServices($element),
@@ -90,60 +92,65 @@ class XmlToPhpConfigConverter
     /**
      * Process imports section
      */
-    private function processImports(\DOMElement $imports): void
+    private function processImports(\DOMElement $imports): string
     {
-        $this->addComment('Imports');
+        $output = '';
         foreach ($imports->getElementsByTagName('import') as $import) {
             $resource = $import->getAttribute('resource');
             $ignoreErrors = $import->getAttribute('ignore-errors');
             $type = $import->getAttribute('type');
 
-            $this->output .= sprintf('%s$container->import(%s',
+            $output .= sprintf('%s$container->import(%s',
                 $this->nl(),
                 $this->formatString($resource)
             );
 
             if ($type) {
-                $this->output .= sprintf(', %s', $this->formatString($type));
+                $output .= sprintf(', %s', $this->formatString($type));
             }
 
             if ($ignoreErrors === 'not_found') {
-                $this->output .= ', true';
+                $output .= ', true';
             }
 
-            $this->output .= ');';
+            $output .= ');';
         }
-        $this->output .= $this->nl();
+
+        return $output . $this->nl();
     }
 
     /**
      * Process parameters section
      */
-    private function processParameters(\DOMElement $parameters): void
+    private function processParameters(\DOMElement $parameters): string
     {
         $parametersKey = $parameters->getAttribute('key');
+        $output = '';
         if ($parametersKey) {
             // For collection parameters with key
-            $this->output .= sprintf('%s$parameters->set(%s, []);',
+            $output .= sprintf('%s$parameters->set(%s, []);',
                 $this->nl(),
                 $this->formatString($parametersKey)
             );
         }
 
         foreach ($parameters->getElementsByTagName('parameter') as $parameter) {
-            $this->processParameter($parameter);
+            $output .= $this->processParameter($parameter);
         }
+
+        return $output;
     }
 
     /**
      * Process a single parameter element
      */
-    private function processParameter(\DOMElement $parameter, string $parentPath = ''): void
+    private function processParameter(\DOMElement $parameter, string $parentPath = ''): string
     {
         $id = $parameter->getAttribute('id');
         $type = $parameter->getAttribute('type') ?: 'string';
         $key = $parameter->getAttribute('key');
         $value = trim($parameter->nodeValue);
+        $output = '';
 
         // Check for nested parameters
         $hasNestedParameters = $parameter->getElementsByTagName('parameter')->length > 0;
@@ -153,7 +160,7 @@ class XmlToPhpConfigConverter
             $path = $parentPath ? "$parentPath.$key" : $key;
 
             if (!$parentPath) {
-                $this->output .= sprintf('%s$parameters->set(%s, []);',
+                $output .= sprintf('%s$parameters->set(%s, []);',
                     $this->nl(),
                     $this->formatString($key ?: $id)
                 );
@@ -161,7 +168,7 @@ class XmlToPhpConfigConverter
 
             foreach ($parameter->getElementsByTagName('parameter') as $childParam) {
                 if ($childParam->parentNode->isSameNode($parameter)) {
-                    $this->processParameter($childParam, $path);
+                    $output .= $this->processParameter($childParam, $path);
                 }
             }
         } else {
@@ -170,31 +177,33 @@ class XmlToPhpConfigConverter
 
             if ($parentPath) {
                 $path = $parentPath . '.' . ($key ?: $id);
-                $this->output .= sprintf('%s$parameters->set(%s, %s);',
+                $output .= sprintf('%s$parameters->set(%s, %s);',
                     $this->nl(),
                     $this->formatString($path),
                     $formattedValue
                 );
             } else {
-                $this->output .= sprintf('%s$parameters->set(%s, %s);',
+                $output .= sprintf('%s$parameters->set(%s, %s);',
                     $this->nl(),
                     $this->formatString($key ?: $id),
                     $formattedValue
                 );
             }
         }
+
+        return $output;
     }
 
     /**
      * Process services section
      */
-    private function processServices(\DOMElement $services): void
+    private function processServices(\DOMElement $services): string
     {
-        // Process services
+        $output = '';
         foreach ($services->childNodes as $childNode) {
             if ($childNode instanceof \DOMElement) {
-                $this->output .= $this->nl(0);
-                match ($childNode->nodeName) {
+                $output .= $this->nl(0);
+                $output .= match ($childNode->nodeName) {
                     'defaults' => $this->processDefaults($childNode),
                     'service' => $this->processService($childNode),
                     'prototype' => $this->processPrototype($childNode),
@@ -203,56 +212,60 @@ class XmlToPhpConfigConverter
                 };
             }
         }
+
+        return $output;
     }
 
     /**
      * Process service defaults
      */
-    private function processDefaults(\DOMElement $defaults): void
+    private function processDefaults(\DOMElement $defaults): string
     {
         $this->addComment('Defaults');
-        $this->output .= $this->nl() . '$services->defaults()';
+        $output = $this->nl() . '$services->defaults()';
 
         $this->indentLevel++;
         // Process attributes
         if ($defaults->hasAttribute('public')) {
-            $this->output .= $this->formatBooleanAttribute($defaults, 'public', $this->nl() . '->public()');
+            $output .= $this->formatBooleanAttribute($defaults, 'public', $this->nl() . '->public()');
         }
 
         if ($defaults->hasAttribute('autowire')) {
-            $this->output .= $this->formatBooleanAttribute($defaults, 'autowire', $this->nl() . '->autowire()');
+            $output .= $this->formatBooleanAttribute($defaults, 'autowire', $this->nl() . '->autowire()');
         }
 
         if ($defaults->hasAttribute('autoconfigure')) {
-            $this->output .= $this->formatBooleanAttribute($defaults, 'autoconfigure', $this->nl() . '->autoconfigure()');
+            $output .= $this->formatBooleanAttribute($defaults, 'autoconfigure', $this->nl() . '->autoconfigure()');
         }
 
         // Process tags
         foreach ($defaults->getElementsByTagName('tag') as $tag) {
-            $this->output .= $this->nl() . $this->processTag($tag);
+            $output .= $this->nl() . $this->processTag($tag);
         }
 
         // Process binds
         foreach ($defaults->getElementsByTagName('bind') as $bind) {
-            $this->output .= $this->nl() . $this->processBind($bind);
+            $output .= $this->nl() . $this->processBind($bind);
         }
 
-        $this->output .= ';';
         $this->indentLevel--;
+
+        return $output . ';';
     }
 
     /**
      * Process a service definition
      */
-    private function processService(\DOMElement $service): void
+    private function processService(\DOMElement $service): string
     {
         $id = $service->getAttribute('id');
         $class = $service->getAttribute('class');
+        $output = '';
 
         // Check if this is an alias
         if ($service->hasAttribute('alias')) {
             $alias = $service->getAttribute('alias');
-            $this->output .= sprintf('%s$services->alias(%s, %s)',
+            $output .= sprintf('%s$services->alias(%s, %s)',
                 $this->nl(),
                 $this->formatString($id),
                 $this->formatString($alias)
@@ -260,16 +273,16 @@ class XmlToPhpConfigConverter
 
             $this->indentLevel++;
             if ($service->hasAttribute('public')) {
-                $this->output .= $this->formatBooleanAttribute($service, 'public', $this->nl() . '->public()');
+                $output .= $this->formatBooleanAttribute($service, 'public', $this->nl() . '->public()');
             }
-            $this->output .= ';';
+            $output .= ';';
             $this->indentLevel--;
 
-            return;
+            return $output;
         }
 
         // Regular service definition
-        $this->output .= sprintf('%s$services->set(%s, %s)',
+        $output .= sprintf('%s$services->set(%s, %s)',
             $this->nl(),
             $this->formatString($id),
             $class ? $this->formatString($class) : 'null'
@@ -279,32 +292,32 @@ class XmlToPhpConfigConverter
 
         // Service attributes
         if ($service->hasAttribute('shared')) {
-            $this->output .= $this->formatBooleanAttribute($service, 'shared', $this->nl() . '->shared()', $this->nl() . '->shared(false)');
+            $output .= $this->formatBooleanAttribute($service, 'shared', $this->nl() . '->shared()', $this->nl() . '->shared(false)');
         }
 
         if ($service->hasAttribute('public')) {
-            $this->output .= $this->formatBooleanAttribute($service, 'public', $this->nl() . '->public()');
+            $output .= $this->formatBooleanAttribute($service, 'public', $this->nl() . '->public()');
         }
 
         if ($service->hasAttribute('synthetic')) {
-            $this->output .= $this->formatBooleanAttribute($service, 'synthetic', $this->nl() . '->synthetic()');
+            $output .= $this->formatBooleanAttribute($service, 'synthetic', $this->nl() . '->synthetic()');
         }
 
         if ($service->hasAttribute('abstract')) {
-            $this->output .= $this->formatBooleanAttribute($service, 'abstract', $this->nl() . '->abstract()');
+            $output .= $this->formatBooleanAttribute($service, 'abstract', $this->nl() . '->abstract()');
         }
 
         if ($service->hasAttribute('lazy')) {
             $lazy = $service->getAttribute('lazy');
             if ($lazy === 'true' || $lazy === '1') {
-                $this->output .= $this->nl().'->lazy()';
+                $output .= $this->nl().'->lazy()';
             } else {
-                $this->output .= $this->nl().'->lazy(' . $this->formatString($lazy) . ')';
+                $output .= $this->nl().'->lazy(' . $this->formatString($lazy) . ')';
             }
         }
 
         if ($service->hasAttribute('parent')) {
-            $this->output .= $this->nl().'->parent(' . $this->formatString($service->getAttribute('parent')) . ')';
+            $output .= $this->nl().'->parent(' . $this->formatString($service->getAttribute('parent')) . ')';
         }
 
         if ($service->hasAttribute('decorates')) {
@@ -316,34 +329,34 @@ class XmlToPhpConfigConverter
             $decorationOnInvalid = $service->hasAttribute('decoration-on-invalid') ?
                 $service->getAttribute('decoration-on-invalid') : null;
 
-            $this->output .= $this->nl().'->decorate('.$this->formatString($decorates);
+            $output .= $this->nl().'->decorate('.$this->formatString($decorates);
 
             if ($decorationInnerName !== null || $decorationPriority !== 0 || $decorationOnInvalid !== null) {
-                $this->output .= ', ' . ($decorationInnerName ? $this->formatString($decorationInnerName) : 'null');
+                $output .= ', ' . ($decorationInnerName ? $this->formatString($decorationInnerName) : 'null');
             }
 
             if ($decorationPriority !== 0 || $decorationOnInvalid !== null) {
-                $this->output .= ', ' . $decorationPriority;
+                $output .= ', ' . $decorationPriority;
             }
 
             if ($decorationOnInvalid !== null) {
-                $this->output .= ', ' . $this->formatString($decorationOnInvalid);
+                $output .= ', ' . $this->formatString($decorationOnInvalid);
             }
 
-            $this->output .= ')';
+            $output .= ')';
         }
 
         if ($service->hasAttribute('autowire')) {
-            $this->output .= $this->formatBooleanAttribute($service, 'autowire', '->autowire()');
+            $output .= $this->formatBooleanAttribute($service, 'autowire', '->autowire()');
         }
 
         if ($service->hasAttribute('autoconfigure')) {
-            $this->output .= $this->formatBooleanAttribute($service, 'autoconfigure', '->autoconfigure()');
+            $output .= $this->formatBooleanAttribute($service, 'autoconfigure', '->autoconfigure()');
         }
 
         // Handle arguments separately for better formatting
         if ($service->getElementsByTagName('argument')->length > 0) {
-            $this->output .= $this->processArguments($service);
+            $output .= $this->processArguments($service);
         }
 
         // Process child elements
@@ -357,7 +370,7 @@ class XmlToPhpConfigConverter
                 continue;
             }
 
-            $this->output .= $this->nl() . match ($childNode->nodeName) {
+            $output .= $this->nl() . match ($childNode->nodeName) {
                 'file' => '->file(' . $this->formatString(trim($childNode->nodeValue)) . ')',
                 'factory' => $this->processFactory($childNode),
                 'from-callable' => $this->processCallable($childNode, 'from_callable'),
@@ -371,54 +384,55 @@ class XmlToPhpConfigConverter
             };
         }
 
-        $this->output .= ';';
         $this->indentLevel--;
+
+        return $output . ';';
     }
 
     /**
      * Process a service prototype
      */
-    private function processPrototype(\DOMElement $prototype): void
+    private function processPrototype(\DOMElement $prototype): string
     {
         $namespace = $prototype->getAttribute('namespace');
         $resource = $prototype->getAttribute('resource');
         $exclude = $prototype->getAttribute('exclude');
 
-        $this->output .= $this->nl().'$services->prototype('.$this->formatString($namespace).', '.$this->formatString($resource).')';
+        $output = $this->nl().'$services->prototype('.$this->formatString($namespace).', '.$this->formatString($resource).')';
 
         $this->indentLevel++;
         if ($exclude) {
-            $this->output .= '->exclude(' . $this->formatString($exclude) . ')';
+            $output .= '->exclude(' . $this->formatString($exclude) . ')';
         }
 
         // Process attributes (same as for regular services)
         if ($prototype->hasAttribute('shared')) {
-            $this->output .= $this->formatBooleanAttribute($prototype, 'shared', $this->nl() . '->shared()', $this->nl() . '->shared(false)');
+            $output .= $this->formatBooleanAttribute($prototype, 'shared', $this->nl() . '->shared()', $this->nl() . '->shared(false)');
         }
 
         if ($prototype->hasAttribute('public')) {
-            $this->output .= $this->formatBooleanAttribute($prototype, 'public', $this->nl() . '->public()');
+            $output .= $this->formatBooleanAttribute($prototype, 'public', $this->nl() . '->public()');
         }
 
         if ($prototype->hasAttribute('abstract')) {
-            $this->output .= $this->formatBooleanAttribute($prototype, 'abstract', $this->nl() . '->abstract()');
+            $output .= $this->formatBooleanAttribute($prototype, 'abstract', $this->nl() . '->abstract()');
         }
 
         if ($prototype->hasAttribute('parent')) {
-            $this->output .= $this->nl().'->parent(' . $this->formatString($prototype->getAttribute('parent')) . ')';
+            $output .= $this->nl().'->parent(' . $this->formatString($prototype->getAttribute('parent')) . ')';
         }
 
         if ($prototype->hasAttribute('autowire')) {
-            $this->output .= $this->formatBooleanAttribute($prototype, 'autowire', $this->nl() . '->autowire()');
+            $output .= $this->formatBooleanAttribute($prototype, 'autowire', $this->nl() . '->autowire()');
         }
 
         if ($prototype->hasAttribute('autoconfigure')) {
-            $this->output .= $this->formatBooleanAttribute($prototype, 'autoconfigure', $this->nl() . '->autoconfigure()');
+            $output .= $this->formatBooleanAttribute($prototype, 'autoconfigure', $this->nl() . '->autoconfigure()');
         }
 
         // Handle arguments separately
         if ($prototype->getElementsByTagName('argument')->length > 0) {
-            $this->output .= $this->processArguments($prototype);
+            $output .= $this->processArguments($prototype);
         }
 
         // Process child elements (similar to service)
@@ -432,7 +446,7 @@ class XmlToPhpConfigConverter
                 continue;
             }
 
-            $this->output .= $this->nl() . match ($childNode->nodeName) {
+            $output .= $this->nl() . match ($childNode->nodeName) {
                 'factory' => $this->processFactory($childNode),
                 'configurator' => $this->processCallable($childNode, 'configurator'),
                 'call' => $this->processCall($childNode),
@@ -445,35 +459,36 @@ class XmlToPhpConfigConverter
             };
         }
 
-        $this->output .= ';';
         $this->indentLevel--;
+
+        return $output . ';';
     }
 
     /**
      * Process instanceof definition
      */
-    private function processInstanceof(\DOMElement $instanceof): void
+    private function processInstanceof(\DOMElement $instanceof): string
     {
         $id = $instanceof->getAttribute('id');
 
-        $this->output .= $this->nl().'$services->instanceof('.$this->formatString($id).')';
+        $output = $this->nl().'$services->instanceof('.$this->formatString($id).')';
 
         $this->indentLevel++;
         // Process attributes (subset of service attributes)
         if ($instanceof->hasAttribute('shared')) {
-            $this->output .= $this->formatBooleanAttribute($instanceof, 'shared', $this->nl() . '->shared()', $this->nl() . '->shared(false)');
+            $output .= $this->formatBooleanAttribute($instanceof, 'shared', $this->nl() . '->shared()', $this->nl() . '->shared(false)');
         }
 
         if ($instanceof->hasAttribute('public')) {
-            $this->output .= $this->formatBooleanAttribute($instanceof, 'public', $this->nl() . '->public()');
+            $output .= $this->formatBooleanAttribute($instanceof, 'public', $this->nl() . '->public()');
         }
 
         if ($instanceof->hasAttribute('autowire')) {
-            $this->output .= $this->formatBooleanAttribute($instanceof, 'autowire', $this->nl() . '->autowire()');
+            $output .= $this->formatBooleanAttribute($instanceof, 'autowire', $this->nl() . '->autowire()');
         }
 
         if ($instanceof->hasAttribute('autoconfigure')) {
-            $this->output .= $this->formatBooleanAttribute($instanceof, 'autoconfigure', $this->nl() . '->autoconfigure()');
+            $output .= $this->formatBooleanAttribute($instanceof, 'autoconfigure', $this->nl() . '->autoconfigure()');
         }
 
         // Process child elements
@@ -482,7 +497,7 @@ class XmlToPhpConfigConverter
                 continue;
             }
 
-            $this->output .= $this->nl().match($childNode->nodeName) {
+            $output .= $this->nl().match($childNode->nodeName) {
                 'configurator' => $this->processCallable($childNode, 'configurator'),
                 'call' => $this->processCall($childNode),
                 'tag' => $this->processTag($childNode),
@@ -491,22 +506,23 @@ class XmlToPhpConfigConverter
             };
         }
 
-        $this->output .= ';';
         $this->indentLevel--;
+
+        return $output . ';';
     }
 
     /**
      * Process stack definition
      */
-    private function processStack(\DOMElement $stack): void
+    private function processStack(\DOMElement $stack): string
     {
         $id = $stack->getAttribute('id');
 
-        $this->output .= $this->nl().'$services->stack('.$this->formatString($id).')';
+        $output = $this->nl().'$services->stack('.$this->formatString($id).')';
         $this->indentLevel++;
 
         if ($stack->hasAttribute('public')) {
-            $this->output .= $this->formatBooleanAttribute($stack, 'public', '->public()');
+            $output .= $this->formatBooleanAttribute($stack, 'public', '->public()');
         }
 
         // Process stack services
@@ -523,32 +539,31 @@ class XmlToPhpConfigConverter
         }
 
         if (!empty($services)) {
-            $this->output .= $this->nl().'->args([' . implode(', ', $services) . '])';
+            $output .= $this->nl().'->args([' . implode(', ', $services) . '])';
         }
 
         // Process deprecated if present
         $deprecated = $stack->getElementsByTagName('deprecated');
         if ($deprecated->length > 0) {
-            $this->output .= $this->nl().$this->processDeprecated($deprecated->item(0));
+            $output .= $this->nl().$this->processDeprecated($deprecated->item(0));
         }
 
-        $this->output .= ';';
         $this->indentLevel--;
+
+        return $output . ';';
     }
 
     /**
      * Process arguments of a service or prototype
      */
-    private function processArguments(\DOMElement $element): void
+    private function processArguments(\DOMElement $element): string
     {
         $arguments = $element->getElementsByTagName('argument');
 
         // If there's only one argument, use ->args([...])
         if ($arguments->length === 1) {
             $arg = $arguments->item(0);
-            $this->output .= $this->nl().'->args([' . $this->formatArgument($arg) . '])';
-
-            return;
+            return $this->nl().'->args([' . $this->formatArgument($arg) . '])';
         }
 
         // Check if we can use indexed arguments
@@ -566,26 +581,29 @@ class XmlToPhpConfigConverter
             $argIndex++;
         }
 
+        $output = '';
         if ($useIndexed) {
-            $this->output .= $this->nl().'->args([';
+            $output .= $this->nl().'->args([';
             $this->indentLevel++;
             foreach ($arguments as $arg) {
-                $this->output .= $this->nl().$this->formatArgument($arg).',';
+                $output .= $this->nl().$this->formatArgument($arg).',';
             }
             $this->indentLevel--;
-            $this->output .= $this->nl().'])';
+            $output .= $this->nl().'])';
         } else {
             $argIndex = 0;
             foreach ($arguments as $arg) {
                 if ($arg->hasAttribute('key')) {
                     $key = $arg->getAttribute('key');
-                    $this->output .= $this->nl() . '->arg(' . $this->formatString($key) . ', ' . $this->formatArgument($arg) . ')';
+                    $output .= $this->nl() . '->arg(' . $this->formatString($key) . ', ' . $this->formatArgument($arg) . ')';
                 } else {
-                    $this->output .= $this->nl() . '->arg(' . $argIndex . ', ' . $this->formatArgument($arg) . ')';
+                    $output .= $this->nl() . '->arg(' . $argIndex . ', ' . $this->formatArgument($arg) . ')';
                 }
                 $argIndex++;
             }
         }
+
+        return $output;
     }
 
     /**
@@ -895,37 +913,39 @@ class XmlToPhpConfigConverter
     /**
      * Process a when element (environment-specific configuration)
      */
-    private function processWhen(\DOMElement $when): void
+    private function processWhen(\DOMElement $when): string
     {
         $env = $when->getAttribute('env');
 
-        $this->output .= $this->nl(0);
-        $this->addComment("Configuration for environment: {$env}");
-        $this->output .= $this->nl() . 'if ($container->env() === ' . $this->formatString($env) . ') {';
+        $output = $this->nl(0);
+        $output .= $this->addComment("Configuration for environment: {$env}");
+        $output .= $this->nl() . 'if ($container->env() === ' . $this->formatString($env) . ') {';
 
         $this->indentLevel++;
-        $this->processChildNodes($when);
+        $output .= $this->processChildNodes($when);
         $this->indentLevel--;
 
-        $this->output .= $this->nl() . '}';
+        return $output . $this->nl() . '}';
     }
 
     /**
      * Add a comment to the output
      */
-    private function addComment(string $comment): void
+    private function addComment(string $comment): string
     {
         $lines = explode("\n", $comment);
 
         if (count($lines) === 1) {
-            $this->output .= $this->nl() . '// ' . trim($comment);
-        } else {
-            $this->output .= $this->nl() . '/*';
-            foreach ($lines as $line) {
-                $this->output .= $this->nl() . ' * ' . trim($line);
-            }
-            $this->output .= $this->nl() . ' */';
+            return $this->nl() . '// ' . trim($comment);
         }
+
+        $output = $this->nl() . '/*';
+        foreach ($lines as $line) {
+            $output .= $this->nl() . ' * ' . trim($line);
+        }
+        $output .= $this->nl() . ' */';
+
+        return $output;
     }
 
     /**
