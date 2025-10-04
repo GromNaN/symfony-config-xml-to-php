@@ -24,28 +24,40 @@ class XmlToPhpConfigConverter
         $dom->preserveWhiteSpace = true;
         $dom->load($xmlPath);
 
+        $this->validateNamespace($dom);
+
         $this->indentLevel = 0;
-        $output = '';
+        $output = '<?php';
 
         // Start the PHP output with the necessary namespace and function
-        $output .= $this->nl().'<?php';
         $output .= $this->nl(0);
         $output .= $this->nl().'namespace Symfony\Component\DependencyInjection\Loader\Configurator;';
         $output .= $this->nl(0);
         $output .= $this->nl().'return static function(ContainerConfigurator $container) {';
-        $output .= $this->nl().'    $services = $container->services();';
-        $output .= $this->nl().'    $parameters = $container->parameters();';
 
         // Process the root container element and its children
         $this->indentLevel++;
-        $root = $dom->documentElement;
-        $output .= $this->processChildNodes($root);
+        $output .= $this->nl().'$services = $container->services();';
+        $output .= $this->nl().'$parameters = $container->parameters();';
+        $output .= $this->processChildNodes($dom->documentElement);
         $this->indentLevel--;
 
         // Close the function
         $output .= $this->nl().'};';
+        $output .= $this->nl(0);
 
         return $output;
+    }
+
+    private function validateNamespace(\DOMDocument $document): void
+    {
+        foreach ($document->documentElement->attributes as $attr) {
+            if ($attr->name === 'schemaLocation' && str_contains($attr->value, 'http://symfony.com/schema/dic/services')) {
+                return; // Valid namespace found
+            }
+        }
+
+        throw new \RuntimeException('Invalid or missing XML namespace. Expected "http://symfony.com/schema/dic/services".');
     }
 
     /**
@@ -134,7 +146,11 @@ class XmlToPhpConfigConverter
             );
         }
 
-        foreach ($parameters->getElementsByTagName('parameter') as $parameter) {
+        foreach ($parameters->childNodes as $parameter) {
+            if (!$parameter instanceof \DOMElement || $parameter->nodeName == 'parameter') {
+                continue;
+            }
+
             $output .= $this->processParameter($parameter);
         }
 
@@ -239,13 +255,17 @@ class XmlToPhpConfigConverter
         }
 
         // Process tags
-        foreach ($defaults->getElementsByTagName('tag') as $tag) {
-            $output .= $this->nl() . $this->processTag($tag);
-        }
+        foreach ($defaults->childNodes as $childNode) {
+            if (!($childNode instanceof \DOMElement)) {
+                continue;
+            }
 
-        // Process binds
-        foreach ($defaults->getElementsByTagName('bind') as $bind) {
-            $output .= $this->nl() . $this->processBind($bind);
+            $output .= match ($childNode->nodeName) {
+                'tag' => $this->nl() . $this->processTag($childNode),
+                'resource-tag' => $this->nl() . $this->processTag($childNode, true),
+                'bind' => $this->nl() . $this->processBind($childNode),
+                default => '',
+            };
         }
 
         $this->indentLevel--;
@@ -289,10 +309,31 @@ class XmlToPhpConfigConverter
         );
 
         $this->indentLevel++;
+        $output .= $this->processServiceConfiguration($service);
+        $this->indentLevel--;
 
+        return $output . ';';
+    }
+
+    private function processInlineService(\DOMElement $service): string
+    {
+        $class = $service->getAttribute('class') ?? throw new \LogicException('Inline service must have a class attribute.');
+        $output = sprintf('inline_service(%s)', $this->formatString($class));
+
+        // Process service configuration
+        $this->indentLevel++;
+        $output .= $this->processServiceConfiguration($service);
+        $this->indentLevel--;
+
+        return $output;
+    }
+
+    private function processServiceConfiguration(\DOMElement $service): string
+    {
+        $output = '';
         // Service attributes
         if ($service->hasAttribute('shared')) {
-            $output .= $this->formatBooleanAttribute($service, 'shared', $this->nl() . '->shared()', $this->nl() . '->shared(false)');
+            $output .= $this->formatBooleanAttribute($service, 'shared', $this->nl() . '->share()', $this->nl() . '->share(false)');
         }
 
         if ($service->hasAttribute('public')) {
@@ -355,9 +396,7 @@ class XmlToPhpConfigConverter
         }
 
         // Handle arguments separately for better formatting
-        if ($service->getElementsByTagName('argument')->length > 0) {
-            $output .= $this->processArguments($service);
-        }
+        $output .= $this->processArguments($service);
 
         // Process child elements
         foreach ($service->childNodes as $childNode) {
@@ -384,9 +423,23 @@ class XmlToPhpConfigConverter
             };
         }
 
-        $this->indentLevel--;
+        return $output;
+    }
 
-        return $output . ';';
+    private function processServiceReference(\DOMElement $element): string
+    {
+        $id = $element->getAttribute('id');
+        $output = 'service('.$this->formatString($id).')';
+
+        $onInvalid = $element->getAttribute('on-invalid') ?: 'exception';
+        $output .= match ($onInvalid) {
+            'ignore' => '->ignoreOnInvalid()',
+            'null' => '->nullOnInvalid()',
+            'ignore_uninitialized' => '->ignoreOnUninitialized()',
+            'exception' => '',
+        };
+
+        return $output;
     }
 
     /**
@@ -398,7 +451,7 @@ class XmlToPhpConfigConverter
         $resource = $prototype->getAttribute('resource');
         $exclude = $prototype->getAttribute('exclude');
 
-        $output = $this->nl().'$services->prototype('.$this->formatString($namespace).', '.$this->formatString($resource).')';
+        $output = $this->nl().'$services->load('.$this->formatString($namespace).', '.$this->formatString($resource).')';
 
         $this->indentLevel++;
         if ($exclude) {
@@ -406,8 +459,8 @@ class XmlToPhpConfigConverter
         }
 
         // Process attributes (same as for regular services)
-        if ($prototype->hasAttribute('shared')) {
-            $output .= $this->formatBooleanAttribute($prototype, 'shared', $this->nl() . '->shared()', $this->nl() . '->shared(false)');
+        if ($prototype->hasAttribute('share')) {
+            $output .= $this->formatBooleanAttribute($prototype, 'shared', $this->nl() . '->share()', $this->nl() . '->share(false)');
         }
 
         if ($prototype->hasAttribute('public')) {
@@ -455,7 +508,7 @@ class XmlToPhpConfigConverter
                 'property' => $this->processProperty($childNode),
                 'bind' => $this->processBind($childNode),
                 'deprecated' => $this->processDeprecated($childNode),
-                'exclude' => '->exclude(' . $this->formatString(trim($childNode->nodeValue)) . ')',
+                'exclude' => '->exclude(' . $this->formatString($childNode->nodeValue) . ')',
             };
         }
 
@@ -476,7 +529,7 @@ class XmlToPhpConfigConverter
         $this->indentLevel++;
         // Process attributes (subset of service attributes)
         if ($instanceof->hasAttribute('shared')) {
-            $output .= $this->formatBooleanAttribute($instanceof, 'shared', $this->nl() . '->shared()', $this->nl() . '->shared(false)');
+            $output .= $this->formatBooleanAttribute($instanceof, 'shared', $this->nl() . '->share()', $this->nl() . '->share(false)');
         }
 
         if ($instanceof->hasAttribute('public')) {
@@ -518,34 +571,42 @@ class XmlToPhpConfigConverter
     {
         $id = $stack->getAttribute('id');
 
-        $output = $this->nl().'$services->stack('.$this->formatString($id).')';
+        $output = $this->nl().'$services->stack('.$this->formatString($id).', [';
+
+        // Process stack services
+        $services = [];
+        $this->indentLevel++;
+        foreach ($stack->childNodes as $service) {
+            if (!($service instanceof \DOMElement) || $service->nodeName !== 'service') {
+                continue;
+            }
+            $serviceId = $service->getAttribute('id');
+            if ($serviceId) {
+                $services[] = $this->nl().$this->processServiceReference($service).',';
+            } else {
+                $services[] = $this->nl().$this->processInlineService($service).',';
+            }
+        }
+
+        $this->indentLevel--;
+
+        if (empty($services)) {
+            $output .= '])';
+        } else {
+            $output .= implode('', $services).$this->nl() . '])';
+        }
+
         $this->indentLevel++;
 
         if ($stack->hasAttribute('public')) {
             $output .= $this->formatBooleanAttribute($stack, 'public', '->public()');
         }
 
-        // Process stack services
-        $services = [];
-        foreach ($stack->getElementsByTagName('service') as $service) {
-            $serviceId = $service->getAttribute('id');
-            $serviceClass = $service->getAttribute('class');
-
-            if ($serviceId) {
-                $services[] = sprintf('service(%s)', $this->formatString($serviceId));
-            } elseif ($serviceClass) {
-                $services[] = sprintf('inline_service(%s)', $this->formatString($serviceClass));
-            }
-        }
-
-        if (!empty($services)) {
-            $output .= $this->nl().'->args([' . implode(', ', $services) . '])';
-        }
-
         // Process deprecated if present
-        $deprecated = $stack->getElementsByTagName('deprecated');
-        if ($deprecated->length > 0) {
-            $output .= $this->nl().$this->processDeprecated($deprecated->item(0));
+        foreach ($stack->childNodes as $deprecated) {
+            if ($deprecated instanceof \DOMElement && $deprecated->nodeName === 'deprecated') {
+                $output .= $this->processDeprecated($deprecated);
+            }
         }
 
         $this->indentLevel--;
@@ -558,52 +619,37 @@ class XmlToPhpConfigConverter
      */
     private function processArguments(\DOMElement $element): string
     {
-        $arguments = $element->getElementsByTagName('argument');
+        /** @var \DOMElement[] $arguments */
+        $arguments = array_filter(iterator_to_array($element->childNodes), fn(\DOMNode $node) => $node instanceof \DOMElement && $node->nodeName === 'argument');
+
+        if (count($arguments) === 0) {
+            return '';
+        }
 
         // If there's only one argument, use ->args([...])
-        if ($arguments->length === 1) {
-            $arg = $arguments->item(0);
-            return $this->nl().'->args([' . $this->formatArgument($arg) . '])';
+        if (count($arguments) === 1) {
+            foreach( $arguments as $arg) {
+                return $this->nl() . '->args([' . $this->formatArgument($arg) . '])';
+            }
         }
 
-        // Check if we can use indexed arguments
-        $useIndexed = true;
-        $argIndex = 0;
+        $output = $this->nl().'->args([';
+        $this->indentLevel++;
+        foreach ($element->childNodes as $arg) {
+            if (!$arg instanceof \DOMElement) {
+                continue;
+            }
 
-        foreach ($arguments as $arg) {
             if ($arg->hasAttribute('key')) {
                 $key = $arg->getAttribute('key');
-                if ($key !== (string)$argIndex) {
-                    $useIndexed = false;
-                    break;
-                }
-            }
-            $argIndex++;
-        }
-
-        $output = '';
-        if ($useIndexed) {
-            $output .= $this->nl().'->args([';
-            $this->indentLevel++;
-            foreach ($arguments as $arg) {
-                $output .= $this->nl().$this->formatArgument($arg).',';
-            }
-            $this->indentLevel--;
-            $output .= $this->nl().'])';
-        } else {
-            $argIndex = 0;
-            foreach ($arguments as $arg) {
-                if ($arg->hasAttribute('key')) {
-                    $key = $arg->getAttribute('key');
-                    $output .= $this->nl() . '->arg(' . $this->formatString($key) . ', ' . $this->formatArgument($arg) . ')';
-                } else {
-                    $output .= $this->nl() . '->arg(' . $argIndex . ', ' . $this->formatArgument($arg) . ')';
-                }
-                $argIndex++;
+                $output .= $this->nl() . $this->formatString($key) . ' => ' . $this->formatArgument($arg) . ',';
+            } else {
+                $output .= $this->nl() . $this->formatArgument($arg) . ',';
             }
         }
+        $this->indentLevel--;
 
-        return $output;
+        return $output . $this->nl().'])';
     }
 
     /**
@@ -613,39 +659,40 @@ class XmlToPhpConfigConverter
     {
         $type = $argument->getAttribute('type') ?: null;
         $id = $argument->getAttribute('id') ?: null;
-        $key = $argument->getAttribute('key') ?: null;
-        $value = trim($argument->nodeValue);
-
-        // Handle inline service inside argument
-        if ($argument->getElementsByTagName('service')->length > 0) {
-            $service = $argument->getElementsByTagName('service')->item(0);
-            $class = $service->getAttribute('class') ?: 'null';
-            return "inline_service({$this->formatString($class)})";
-        }
+        $value = $argument->nodeValue;
 
         // Handle nested arguments (collection)
-        if ($type === 'collection' && $argument->getElementsByTagName('argument')->length > 0) {
+        if ($type === 'collection') {
             $items = [];
+            foreach ($argument->childNodes as $item) {
+                if (!$item instanceof \DOMElement) {
+                    continue;
+                }
+                if ($item->nodeName !== 'argument') {
+                    throw new \LogicException(sprintf('A collection argument can only contain <argument> elements, got %s.', $item->getRootNode()->saveXML($item)));
+                }
 
-            foreach ($argument->getElementsByTagName('argument') as $item) {
-                if ($item->parentNode->isSameNode($argument)) {
-                    $itemKey = $item->getAttribute('key');
-                    $itemValue = $this->formatArgument($item);
-
-                    if ($itemKey) {
-                        $items[] = $this->formatString($itemKey) . ' => ' . $itemValue;
-                    } else {
-                        $items[] = $itemValue;
-                    }
+                $itemKey = $item->getAttribute('key');
+                if ($itemKey) {
+                    $items[] = $this->formatString($itemKey) . ' => ' . $this->formatArgument($item);
+                } else {
+                    $items[] = $this->formatArgument($item);
                 }
             }
 
             return '[' . implode(', ', $items) . ']';
         }
 
+        // Inline services are defined with a nested <service> element
+        foreach ($argument->childNodes as $childNode) {
+            if ($childNode instanceof \DOMElement && $childNode->nodeName === 'service') {
+                return $this->processInlineService($childNode);
+            }
+        }
+
         // Handle specific argument types
-        if ($type === 'service' && $id) {
-            return "service({$this->formatString($id)})";
+        if ($type === 'service') {
+            return $this->processServiceReference($argument);
         }
 
         if ($type === 'expression') {
@@ -661,21 +708,46 @@ class XmlToPhpConfigConverter
         }
 
         if ($type === 'binary') {
-            return $this->formatString(base64_decode($value));
+            return 'base64_decode('.$this->formatString($value).')';
         }
 
         if ($type === 'tagged' || $type === 'tagged_iterator') {
-            $tag = $argument->getAttribute('tag');
-            return "tagged_iterator({$this->formatString($tag)})";
+            return $this->processTagged('tagged_iterator', $argument);
         }
 
         if ($type === 'tagged_locator') {
-            $tag = $argument->getAttribute('tag');
-            return "tagged_locator({$this->formatString($tag)})";
+            return $this->processTagged('tagged_locator', $argument);
         }
 
         // Default handling (treat as string or convert to appropriate PHP value)
         return $this->formatValue($value);
+    }
+
+    private function processTagged(string $method, \DOMElement $argument): string
+    {
+        $output = $method.'(' . $this->formatString($argument->getAttribute('tag'));
+
+        if ($argument->hasAttribute('index-by')) {
+            $output .= ', indexAttribute: ' . $this->formatString($argument->getAttribute('index-by'));
+        }
+
+        if ($argument->hasAttribute('default-index-method')) {
+            $output .= ', defaultIndexMethod: ' . $this->formatString($argument->getAttribute('default-index-method'));
+        }
+
+        if ($argument->hasAttribute('default-priority-method')) {
+            $output .= ', defaultPriorityMethod: ' . $this->formatString($argument->getAttribute('default-priority-method'));
+        }
+
+        if ($argument->hasAttribute('exclude')) {
+            $output .= ', defaultPriorityMethod: ' . $this->formatString($argument->getAttribute('exclude'));
+        }
+
+        if ($argument->hasAttribute('exclude-self')) {
+            $output .= $this->formatBooleanAttribute($argument, 'exclude-self', null, ', false');
+        }
+
+        return $output . ')';
     }
 
     /**
@@ -709,7 +781,7 @@ class XmlToPhpConfigConverter
             return '->factory(expr(' . $this->formatString($expression) . '))';
         }
 
-        return '';
+        throw new \LogicException(sprintf('Invalid factory definition in XML: %s', $factory->ownerDocument->saveXML($factory)));
     }
 
     /**
@@ -778,9 +850,14 @@ class XmlToPhpConfigConverter
     private function processTag(\DOMElement $tag, bool $isResource = false): string
     {
         $name = $tag->getAttribute('name');
-        $method = $isResource ? '->resource_tag(' : '->tag(';
 
-        $result = $method . $this->formatString($name);
+        if (!$name) {
+            throw new \LogicException(' The tag name for must be a non-empty string.');
+        }
+
+        $method = $isResource ? '->resourceTag(' : '->tag(';
+
+        $output = $method . $this->formatString($name);
 
         // Check for attributes
         $attributes = [];
@@ -803,19 +880,14 @@ class XmlToPhpConfigConverter
         }
 
         if (!empty($attributes)) {
-            $result .= ', [';
-            $attrStrings = [];
-
+            $outputs = [];
             foreach ($attributes as $key => $value) {
-                $attrStrings[] = $this->formatString($key) . ' => ' . $this->formatValue($value);
+                $outputs[] = $this->formatString($key) . ' => ' . $this->formatValue($value);
             }
-
-            $result .= implode(', ', $attrStrings);
-            $result .= ']';
+            $output .= ', ['.implode(', ', $outputs).']';
         }
 
-        $result .= ')';
-        return $result;
+        return $output.')';
     }
 
     /**
@@ -824,36 +896,8 @@ class XmlToPhpConfigConverter
     private function processProperty(\DOMElement $property): string
     {
         $name = $property->getAttribute('name');
-        $value = trim($property->nodeValue);
-        $type = $property->getAttribute('type') ?: null;
 
-        // Handle inline service
-        if ($property->getElementsByTagName('service')->length > 0) {
-            $service = $property->getElementsByTagName('service')->item(0);
-            $class = $service->getAttribute('class') ?: 'null';
-            return '->property('.$this->formatString($name).', inline_service('.$this->formatString($class).'))';
-        }
-
-        // Format value based on type
-        if ($type === 'service' && $property->getAttribute('id')) {
-            $id = $property->getAttribute('id');
-            return "->property({$this->formatString($name)}, service({$this->formatString($id)}))";
-        }
-
-        if ($type === 'expression') {
-            return "->property({$this->formatString($name)}, expr({$this->formatString($value)}))";
-        }
-
-        if ($type === 'string') {
-            return "->property({$this->formatString($name)}, {$this->formatString($value)})";
-        }
-
-        if ($type === 'constant') {
-            return "->property({$this->formatString($name)}, constant({$this->formatString($value)}))";
-        }
-
-        // Default handling
-        return "->property({$this->formatString($name)}, {$this->formatValue($value)})";
+        return '->property('.$this->formatString($name).', '.$this->formatArgument($property).')';
     }
 
     /**
@@ -862,36 +906,8 @@ class XmlToPhpConfigConverter
     private function processBind(\DOMElement $bind): string
     {
         $key = $bind->getAttribute('key');
-        $value = trim($bind->nodeValue);
-        $type = $bind->getAttribute('type') ?: null;
 
-        // Handle inline service
-        if ($bind->getElementsByTagName('service')->length > 0) {
-            $service = $bind->getElementsByTagName('service')->item(0);
-            $class = $service->getAttribute('class') ?: 'null';
-            return "->bind({$this->formatString($key)}, inline_service({$this->formatString($class)}))";
-        }
-
-        // Format value based on type
-        if ($type === 'service' && $bind->getAttribute('id')) {
-            $id = $bind->getAttribute('id');
-            return "->bind({$this->formatString($key)}, service({$this->formatString($id)}))";
-        }
-
-        if ($type === 'expression') {
-            return "->bind({$this->formatString($key)}, expr({$this->formatString($value)}))";
-        }
-
-        if ($type === 'string') {
-            return "->bind({$this->formatString($key)}, {$this->formatString($value)})";
-        }
-
-        if ($type === 'constant') {
-            return "->bind({$this->formatString($key)}, constant({$this->formatString($value)}))";
-        }
-
-        // Default handling
-        return "->bind({$this->formatString($key)}, {$this->formatValue($value)})";
+        return '->bind('.$this->formatString($key).', '.$this->formatArgument($bind).')';
     }
 
     /**
@@ -903,7 +919,7 @@ class XmlToPhpConfigConverter
         $package = $deprecated->getAttribute('package');
         $version = $deprecated->getAttribute('version');
 
-        return '->deprecated(' .
+        return '->deprecate(' .
             $this->formatString($package) . ', ' .
             $this->formatString($version) . ', ' .
             $this->formatString($message) .
@@ -1009,13 +1025,8 @@ class XmlToPhpConfigConverter
         }
 
         if (is_numeric($value)) {
-            // Check if it's an integer
-            if ((string)(int)$value === $value) {
-                return $value;
-            }
-
-            // Check if it's a float
-            if ((string)(float)$value === $value) {
+            // Check if it's an integer or a float
+            if ((string)(int)$value === $value || (string)(float)$value === $value) {
                 return $value;
             }
         }
@@ -1029,6 +1040,6 @@ class XmlToPhpConfigConverter
      */
     private function nl(?int $indentLevel = null): string
     {
-        return PHP_EOL.str_repeat('    ', $indentLevel ?? $this->indentLevel);
+        return "\n".str_repeat('    ', $indentLevel ?? $this->indentLevel);
     }
 }
