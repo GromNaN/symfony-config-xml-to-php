@@ -21,5 +21,8 @@
         "symfony/dependency-injection": "7.4.*",
         "sebastian/diff": "^7.0@dev",
         "friendsofphp/php-cs-fixer": "dev-master"
+    },
+    "require-dev": {
+        "symfony/expression-language": "7.4.*"
     }
 }

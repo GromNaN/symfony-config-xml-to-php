@@ -14,6 +14,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Dumper\XmlDumper;
 use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
+use Symfony\Component\DependencyInjection\Exception\LogicException;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 use Symfony\Component\DependencyInjection\Loader\XmlFileLoader;
 use Symfony\Component\Finder\Finder;
@@ -95,10 +96,10 @@ final class ConvertCommand extends Command
 
             $this->validateFile($io, $file->getPathname(), $phpPath);
         } catch (\Throwable $e) {
-            $io->error(sprintf('Error converting "%s": %s', $file->getRelativePathname(), $e->getMessage()));
             if ($io->isVeryVerbose()) {
-                $io->writeln($e->getTraceAsString());
+                throw $e;
             }
+            $io->error(sprintf('Error converting "%s": %s', $file->getRelativePathname(), $e->getMessage()));
         }
     }
 
@@ -109,8 +110,8 @@ final class ConvertCommand extends Command
             $xmlContainer = new ContainerBuilder();
             $xmlLoader = new XmlFileLoader($xmlContainer, new FileLocator());
             $xmlLoader->load(realpath($xmlFile));
-        } catch (LoaderLoadException|InvalidArgumentException $e) {
-            $io->writeln(sprintf('Error loading XML file "%s": %s', $xmlFile, $e->getMessage()));
+        } catch (LoaderLoadException|InvalidArgumentException|LogicException $e) {
+            $io->writeln(sprintf('Skip XML file with error "%s": %s', $xmlFile, $e->getMessage()));
 
             return false;
         }
