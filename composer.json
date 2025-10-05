@@ -1,6 +1,8 @@
 {
     "name": "gromnan/symfony-config-xml-to-php",
-    "type": "project",
+    "type": "library",
+    "description": "Convert Symfony config files from XML to PHP",
+    "license": "MIT",
     "autoload": {
         "psr-4": {
             "GromNaN\\SymfonyConfigXmlToPhp\\": "src/"
@@ -19,10 +21,7 @@
         "symfony/config": "7.4.*",
         "symfony/console": "7.4.*",
         "symfony/dependency-injection": "7.4.*",
-        "sebastian/diff": "^7.0@dev",
-        "friendsofphp/php-cs-fixer": "dev-master"
-    },
-    "require-dev": {
-        "symfony/expression-language": "7.4.*"
+        "symfony/expression-language": "7.4.*",
+        "sebastian/diff": "^7.0"
     }
 }

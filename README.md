@@ -6,10 +6,23 @@ XML configuration format is removed from Symfony 8.0. Bundles must convert their
 
 ## Usage
 
-Run the script:
+Install:
 
-    php convert_xml_to_php.php src/Symfony/Bundle/Resources/config/
+    composer require --dev gromnan/symfony-config-xml-to-php
 
-Fix coding style (mainly array syntax):
+Run the script for a directory:
 
-    php-cs-fixer fix src/Symfony/Bundle/Resources/config/
+    bin/console src/Symfony/Bundle/Resources/config/
+
+
+Or for a single file:
+
+    bin/console src/Symfony/Bundle/Resources/config/services.xml
+
+## Contributing
+
+Feel free to open issues or submit pull requests for improvements or bug fixes.
+
+## License
+
+MIT License. See the LICENSE file for details.
