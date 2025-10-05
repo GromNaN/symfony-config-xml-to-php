@@ -193,6 +193,10 @@ class XmlToPhpConfigConverter
             return '[' . implode(', ', $items) . ']';
         }
 
+        if (in_array($parameter->getAttribute('trim'), ['true', '1'], true)) {
+            $value = trim($value);
+        }
+
         return match ($type) {
             'string' => $this->formatString($value),
             'constant' => 'constant('.$this->formatString($value).')',
@@ -233,17 +237,9 @@ class XmlToPhpConfigConverter
 
         $this->indentLevel++;
         // Process attributes
-        if ($defaults->hasAttribute('public')) {
-            $output .= $this->formatBooleanAttribute($defaults, 'public', $this->nl() . '->public()');
-        }
-
-        if ($defaults->hasAttribute('autowire')) {
-            $output .= $this->formatBooleanAttribute($defaults, 'autowire', $this->nl() . '->autowire()');
-        }
-
-        if ($defaults->hasAttribute('autoconfigure')) {
-            $output .= $this->formatBooleanAttribute($defaults, 'autoconfigure', $this->nl() . '->autoconfigure()', $this->nl() . '->autoconfigure(false)');
-        }
+        $output .= $this->formatBooleanAttribute($defaults, 'public', $this->nl() . '->public()', $this->nl() . '->private()');
+        $output .= $this->formatBooleanAttribute($defaults, 'autowire', $this->nl() . '->autowire()', $this->nl() . '->autowire(false)');
+        $output .= $this->formatBooleanAttribute($defaults, 'autoconfigure', $this->nl() . '->autoconfigure()', $this->nl() . '->autoconfigure(false)');
 
         // Process tags
         foreach ($defaults->childNodes as $childNode) {
@@ -310,21 +306,10 @@ class XmlToPhpConfigConverter
     {
         $output = '';
         // Service attributes
-        if ($service->hasAttribute('shared')) {
-            $output .= $this->formatBooleanAttribute($service, 'shared', $this->nl() . '->share()', $this->nl() . '->share(false)');
-        }
-
-        if ($service->hasAttribute('public')) {
-            $output .= $this->formatBooleanAttribute($service, 'public', $this->nl() . '->public()');
-        }
-
-        if ($service->hasAttribute('synthetic')) {
-            $output .= $this->formatBooleanAttribute($service, 'synthetic', $this->nl() . '->synthetic()');
-        }
-
-        if ($service->hasAttribute('abstract')) {
-            $output .= $this->formatBooleanAttribute($service, 'abstract', $this->nl() . '->abstract()');
-        }
+        $output .= $this->formatBooleanAttribute($service, 'shared', $this->nl() . '->share()', $this->nl() . '->share(false)');
+        $output .= $this->formatBooleanAttribute($service, 'public', $this->nl() . '->public()', $this->nl() . '->private()');
+        $output .= $this->formatBooleanAttribute($service, 'synthetic', $this->nl() . '->synthetic()', $this->nl() . '->synthetic(false)');
+        $output .= $this->formatBooleanAttribute($service, 'abstract', $this->nl() . '->abstract()', $this->nl() . '->abstract(false)');
 
         if ($service->hasAttribute('lazy')) {
             $lazy = $service->getAttribute('lazy');
@@ -365,14 +350,8 @@ class XmlToPhpConfigConverter
             $output .= ')';
         }
 
-        if ($service->hasAttribute('autowire')) {
-            $output .= $this->formatBooleanAttribute($service, 'autowire', '->autowire()');
-        }
-
-        if ($service->hasAttribute('autoconfigure')) {
-            $output .= $this->formatBooleanAttribute($service, 'autoconfigure', $this->nl() . '->autoconfigure()', $this->nl() . '->autoconfigure(false)');
-        }
-
+        $output .= $this->formatBooleanAttribute($service, 'autowire', $this->nl() . '->autowire()', $this->nl() . '->autowire(false)');
+        $output .= $this->formatBooleanAttribute($service, 'autoconfigure', $this->nl() . '->autoconfigure()', $this->nl() . '->autoconfigure(false)');
         if ($service->hasAttribute('constructor')) {
             $output .= $this->nl().'->constructor(' . $this->formatString($service->getAttribute('constructor')) . ')';
         }
@@ -456,29 +435,14 @@ class XmlToPhpConfigConverter
 
 
         // Process attributes (same as for regular services)
-        if ($prototype->hasAttribute('share')) {
-            $output .= $this->formatBooleanAttribute($prototype, 'shared', $this->nl() . '->share()', $this->nl() . '->share(false)');
-        }
-
-        if ($prototype->hasAttribute('public')) {
-            $output .= $this->formatBooleanAttribute($prototype, 'public', $this->nl() . '->public()');
-        }
-
-        if ($prototype->hasAttribute('abstract')) {
-            $output .= $this->formatBooleanAttribute($prototype, 'abstract', $this->nl() . '->abstract()');
-        }
-
         if ($prototype->hasAttribute('parent')) {
             $output .= $this->nl().'->parent(' . $this->formatString($prototype->getAttribute('parent')) . ')';
         }
-
-        if ($prototype->hasAttribute('autowire')) {
-            $output .= $this->formatBooleanAttribute($prototype, 'autowire', $this->nl() . '->autowire()');
-        }
-
-        if ($prototype->hasAttribute('autoconfigure')) {
-            $output .= $this->formatBooleanAttribute($prototype, 'autoconfigure', $this->nl() . '->autoconfigure()', $this->nl() . '->autoconfigure(false)');
-        }
+        $output .= $this->formatBooleanAttribute($prototype, 'shared', $this->nl() . '->share()', $this->nl() . '->share(false)');
+        $output .= $this->formatBooleanAttribute($prototype, 'public', $this->nl() . '->public()', $this->nl() . '->private()');
+        $output .= $this->formatBooleanAttribute($prototype, 'abstract', $this->nl() . '->abstract()', $this->nl() . '->abstract(false)');
+        $output .= $this->formatBooleanAttribute($prototype, 'autowire', $this->nl() . '->autowire()', $this->nl() . '->autowire(false)');
+        $output .= $this->formatBooleanAttribute($prototype, 'autoconfigure', $this->nl() . '->autoconfigure()', $this->nl() . '->autoconfigure(false)');
 
         // Handle arguments separately
         $output .= $this->processArguments($prototype);
@@ -522,21 +486,10 @@ class XmlToPhpConfigConverter
 
         $this->indentLevel++;
         // Process attributes (subset of service attributes)
-        if ($instanceof->hasAttribute('shared')) {
-            $output .= $this->formatBooleanAttribute($instanceof, 'shared', $this->nl() . '->share()', $this->nl() . '->share(false)');
-        }
-
-        if ($instanceof->hasAttribute('public')) {
-            $output .= $this->formatBooleanAttribute($instanceof, 'public', $this->nl() . '->public()');
-        }
-
-        if ($instanceof->hasAttribute('autowire')) {
-            $output .= $this->formatBooleanAttribute($instanceof, 'autowire', $this->nl() . '->autowire()');
-        }
-
-        if ($instanceof->hasAttribute('autoconfigure')) {
-            $output .= $this->formatBooleanAttribute($instanceof, 'autoconfigure', $this->nl() . '->autoconfigure()', $this->nl() . '->autoconfigure(false)');
-        }
+        $output .= $this->formatBooleanAttribute($instanceof, 'shared', $this->nl() . '->share()', $this->nl() . '->share(false)');
+        $output .= $this->formatBooleanAttribute($instanceof, 'public', $this->nl() . '->public()', $this->nl() . '->private()');
+        $output .= $this->formatBooleanAttribute($instanceof, 'autowire', $this->nl() . '->autowire()', $this->nl() . '->autowire(false)');
+        $output .= $this->formatBooleanAttribute($instanceof, 'autoconfigure', $this->nl() . '->autoconfigure()', $this->nl() . '->autoconfigure(false)');
 
         // Process child elements
         foreach ($instanceof->childNodes as $childNode) {
@@ -591,10 +544,7 @@ class XmlToPhpConfigConverter
         }
 
         $this->indentLevel++;
-
-        if ($stack->hasAttribute('public')) {
-            $output .= $this->formatBooleanAttribute($stack, 'public', '->public()');
-        }
+        $output .= $this->formatBooleanAttribute($stack, 'public', '->public()', '->private()');
 
         // Process deprecated if present
         foreach ($stack->childNodes as $deprecated) {
@@ -743,6 +693,10 @@ class XmlToPhpConfigConverter
             return $this->processServiceLocator($argument);
         }
 
+        if ($type === 'abstract') {
+            return 'abstract_arg('.$this->formatString($value).')';
+        }
+
         // Default handling (treat as string or convert to appropriate PHP value)
         return $this->formatValue($value);
     }
@@ -780,9 +734,7 @@ class XmlToPhpConfigConverter
             };
         }
 
-        if ($argument->hasAttribute('exclude-self')) {
-            $output .= $this->formatBooleanAttribute($argument, 'exclude-self', null, ', excludeSelf: false');
-        }
+        $output .= $this->formatBooleanAttribute($argument, 'exclude-self', null, ', excludeSelf: false');
 
         return $output . ')';
     }
@@ -897,7 +849,8 @@ class XmlToPhpConfigConverter
             $output .= ', ' . $arguments;
         }
 
-        $output .= $this->formatBooleanAttribute($call, 'returns-clone', $arguments === null ? ', [], true' : ', true');
+        // The 2nd argument is the arguments array, so only add the 3rd argument if needed
+        $output .= $this->formatBooleanAttribute($call, 'returns-clone', ', returnsClone: true');
         $output .= ')';
 
         return $output;
