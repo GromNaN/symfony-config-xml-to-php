@@ -2,6 +2,8 @@
 
 namespace GromNaN\SymfonyConfigXmlToPhp;
 
+use Symfony\Component\Config\Util\XmlUtils;
+
 class XmlToPhpConfigConverter
 {
     private int $indentLevel;
@@ -240,7 +242,7 @@ class XmlToPhpConfigConverter
         }
 
         if ($defaults->hasAttribute('autoconfigure')) {
-            $output .= $this->formatBooleanAttribute($defaults, 'autoconfigure', $this->nl() . '->autoconfigure()');
+            $output .= $this->formatBooleanAttribute($defaults, 'autoconfigure', $this->nl() . '->autoconfigure()', $this->nl() . '->autoconfigure(false)');
         }
 
         // Process tags
@@ -368,7 +370,7 @@ class XmlToPhpConfigConverter
         }
 
         if ($service->hasAttribute('autoconfigure')) {
-            $output .= $this->formatBooleanAttribute($service, 'autoconfigure', '->autoconfigure()');
+            $output .= $this->formatBooleanAttribute($service, 'autoconfigure', $this->nl() . '->autoconfigure()', $this->nl() . '->autoconfigure(false)');
         }
 
         if ($service->hasAttribute('constructor')) {
@@ -475,7 +477,7 @@ class XmlToPhpConfigConverter
         }
 
         if ($prototype->hasAttribute('autoconfigure')) {
-            $output .= $this->formatBooleanAttribute($prototype, 'autoconfigure', $this->nl() . '->autoconfigure()');
+            $output .= $this->formatBooleanAttribute($prototype, 'autoconfigure', $this->nl() . '->autoconfigure()', $this->nl() . '->autoconfigure(false)');
         }
 
         // Handle arguments separately
@@ -533,7 +535,7 @@ class XmlToPhpConfigConverter
         }
 
         if ($instanceof->hasAttribute('autoconfigure')) {
-            $output .= $this->formatBooleanAttribute($instanceof, 'autoconfigure', $this->nl() . '->autoconfigure()');
+            $output .= $this->formatBooleanAttribute($instanceof, 'autoconfigure', $this->nl() . '->autoconfigure()', $this->nl() . '->autoconfigure(false)');
         }
 
         // Process child elements
@@ -676,14 +678,16 @@ class XmlToPhpConfigConverter
                     continue;
                 }
 
-                $itemKey = match ($item->nodeName) {
-                    'attribute' => $item->getAttribute('name'),
-                    default => $item->getAttribute('key'),
+                $itemKey = $item->getAttribute('key') ?: $item->getAttribute('name');
 
+                $itemKey = match($item->getAttribute('key-type')) {
+                    'constant' => '\\'.ltrim($itemKey, '\\'),
+                    'binary' => 'base64_decode('.$this->formatString($itemKey).')',
+                    default => $this->formatString($itemKey),
                 };
 
                 if ($itemKey) {
-                    $items[] = $this->formatString($itemKey) . ' => ' . $this->formatArgument($item);
+                    $items[] =  $itemKey . ' => ' . $this->formatArgument($item);
                 } else {
                     $items[] = $this->formatArgument($item);
                 }
@@ -759,12 +763,25 @@ class XmlToPhpConfigConverter
             $output .= ', defaultPriorityMethod: ' . $this->formatString($argument->getAttribute('default-priority-method'));
         }
 
+        // Exclude can be an attribute or multiple <exclude> child elements
+        $exclude = [];
         if ($argument->hasAttribute('exclude')) {
-            $output .= ', defaultPriorityMethod: ' . $this->formatString($argument->getAttribute('exclude'));
+            $exclude[] = $this->formatString($argument->getAttribute('exclude'));
+        }
+        foreach ($argument->childNodes as $childNode) {
+            if ($childNode instanceof \DOMElement && $childNode->nodeName === 'exclude') {
+                $exclude[] = $this->formatString($childNode->nodeValue);
+            }
+        }
+        if ($exclude) {
+            $output .= ', exclude: ' . match(count($exclude)) {
+                1 => current($exclude),
+                default => '[' . implode(', ', $exclude) . ']',
+            };
         }
 
         if ($argument->hasAttribute('exclude-self')) {
-            $output .= $this->formatBooleanAttribute($argument, 'exclude-self', null, ', false');
+            $output .= $this->formatBooleanAttribute($argument, 'exclude-self', null, ', excludeSelf: false');
         }
 
         return $output . ')';
@@ -929,6 +946,10 @@ class XmlToPhpConfigConverter
         if (!empty($attributes)) {
             $outputs = [];
             foreach ($attributes as $key => $value) {
+                if (str_contains($key, '-') && !str_contains($key, '_') && !\array_key_exists($normalizedName = str_replace('-', '_', $key), $attributes)) {
+                    $key = $normalizedName;
+                }
+
                 $outputs[] = $this->formatString($key) . ' => ' . $value;
             }
             $output .= ', ['.implode(', ', $outputs).']';
@@ -942,7 +963,7 @@ class XmlToPhpConfigConverter
      */
     private function processProperty(\DOMElement $property): string
     {
-        $name = $property->getAttribute('name');
+        $name = $property->getAttribute('key') ?: $property->getAttribute('name');
 
         return '->property('.$this->formatString($name).', '.$this->formatArgument($property).')';
     }
@@ -952,7 +973,7 @@ class XmlToPhpConfigConverter
      */
     private function processBind(\DOMElement $bind): string
     {
-        $key = $bind->getAttribute('key');
+        $key = $bind->getAttribute('key') ?: $bind->getAttribute('name');
 
         return '->bind('.$this->formatString($key).', '.$this->formatArgument($bind).')';
     }
