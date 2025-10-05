@@ -635,11 +635,11 @@ class XmlToPhpConfigConverter
         // If there's only one argument, use ->args([...])
         if (count($arguments) === 1 && !current($arguments)->getAttribute('key')) {
             foreach( $arguments as $arg) {
-                return $this->nl() . '[' . $this->formatArgument($arg) . ']';
+                return '[' . $this->formatArgument($arg) . ']';
             }
         }
 
-        $output = '[';
+        $output = $this->nl() . '[';
         $this->indentLevel++;
         foreach ($arguments as $arg) {
             if (!$arg instanceof \DOMElement) {
@@ -666,35 +666,37 @@ class XmlToPhpConfigConverter
         $value = $argument->nodeValue;
 
         // Handle nested arguments (collection)
-        $items = [];
-        foreach ($argument->childNodes as $item) {
-            if (!$item instanceof \DOMElement) {
-                continue;
+        if (in_array($type, ['collection', null], true)) {
+            $items = [];
+            foreach ($argument->childNodes as $item) {
+                if (!$item instanceof \DOMElement) {
+                    continue;
+                }
+                if ($item->nodeName !== $argument->nodeName) {
+                    continue;
+                }
+
+                $itemKey = match ($item->nodeName) {
+                    'attribute' => $item->getAttribute('name'),
+                    default => $item->getAttribute('key'),
+
+                };
+
+                if ($itemKey) {
+                    $items[] = $this->formatString($itemKey) . ' => ' . $this->formatArgument($item);
+                } else {
+                    $items[] = $this->formatArgument($item);
+                }
             }
-            if ($item->nodeName !== $argument->nodeName) {
-                continue;
+
+            if ($items) {
+                return '[' . implode(', ', $items) . ']';
             }
 
-            $itemKey = match($item->nodeName) {
-                'attribute' => $item->getAttribute('name'),
-                default => $item->getAttribute('key'),
-
-            };
-
-            if ($itemKey) {
-                $items[] = $this->formatString($itemKey) . ' => ' . $this->formatArgument($item);
-            } else {
-                $items[] = $this->formatArgument($item);
+            // Force empty array for a "collection" type, even if no child nodes
+            if ($type === 'collection') {
+                return '[]';
             }
-        }
-
-        if ($items) {
-            return '[' . implode(', ', $items) . ']';
-        }
-
-        // Force empty array for a "collection" type, even if no child nodes
-        if ($type === 'collection') {
-            return '[]';
         }
 
         // Inline services are defined with a nested <service> element
@@ -733,6 +735,10 @@ class XmlToPhpConfigConverter
             return $this->processTagged('tagged_locator', $argument);
         }
 
+        if ($type === 'service_locator') {
+            return $this->processServiceLocator($argument);
+        }
+
         // Default handling (treat as string or convert to appropriate PHP value)
         return $this->formatValue($value);
     }
@@ -762,6 +768,28 @@ class XmlToPhpConfigConverter
         }
 
         return $output . ')';
+    }
+
+    private function processServiceLocator(\DOMElement $argument): string
+    {
+        $output = 'service_locator([';
+
+        $this->indentLevel++;
+        foreach ($argument->childNodes as $item) {
+            if (!$item instanceof \DOMElement || $item->nodeName !== 'argument') {
+                continue;
+            }
+
+            $itemKey = $item->getAttribute('key');
+            if ($itemKey) {
+                $output .= $this->nl() . $this->formatString($itemKey) . ' => ' . $this->formatArgument($item) . ',';
+            } else {
+                $output .= $this->nl() . $this->formatArgument($item) . ',';
+            }
+        }
+        $this->indentLevel--;
+
+        return $output . $this->nl().'])';
     }
 
     /**
