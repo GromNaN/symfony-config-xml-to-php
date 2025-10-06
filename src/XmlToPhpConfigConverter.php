@@ -379,7 +379,7 @@ class XmlToPhpConfigConverter
             $output .= $this->nl() . match ($childNode->nodeName) {
                 'file' => '->file(' . $this->formatString(trim($childNode->nodeValue)) . ')',
                 'factory' => $this->processFactory($childNode),
-                'from-callable' => $this->processCallable($childNode, 'from_callable'),
+                'from-callable' => $this->processCallable($childNode, 'fromCallable'),
                 'configurator' => $this->processCallable($childNode, 'configurator'),
                 'call' => $this->processCall($childNode),
                 'tag' => $this->processTag($childNode),
@@ -591,10 +591,19 @@ class XmlToPhpConfigConverter
         }
 
         // If there's only one argument, use ->args([...])
-        if (count($arguments) === 1 && !current($arguments)->getAttribute('key')) {
-            foreach( $arguments as $arg) {
-                return '[' . $this->formatArgument($arg) . ']';
+        if (count($arguments) === 1) {
+            $key = '';
+            $arg = current($arguments);
+            if ($arg->hasAttribute('index')) {
+                $key = 'index_'.$arg->getAttribute('index');
+            } elseif ($arg->hasAttribute('key')) {
+                $key = $arg->getAttribute('key');
             }
+            if ($key) {
+                return '[' . $this->formatString($key) . ' => ' . $this->formatArgument($arg) . ']';
+            }
+
+            return '[' . $this->formatArgument($arg) . ']';
         }
 
         $output = $this->nl() . '[';
@@ -669,6 +678,14 @@ class XmlToPhpConfigConverter
         // Handle specific argument types
         if ($type === 'service' || $type === 'service_closure') {
             return $this->processServiceReference($argument, $type);
+        }
+
+        if ($type === 'closure') {
+            if ($argument->hasAttribute('id')) {
+                return 'closure(' . $this->processServiceReference($argument, 'service') . ')';
+            }
+
+            return 'closure(' . $this->formatArguments($argument) . ')';
         }
 
         if ($type === 'expression') {
@@ -782,7 +799,19 @@ class XmlToPhpConfigConverter
         // self::method form
         if ($factory->hasAttribute('method')) {
             $method = $factory->getAttribute('method');
-            return '->factory([null, ' . $this->formatString($method) . '])';
+            $service = 'null';
+            foreach ($factory->childNodes as $childNode) {
+                if ($childNode instanceof \DOMElement && $childNode->nodeName === 'service') {
+                    if ($childNode->hasAttribute('id')) {
+                        $service = $this->processServiceReference($childNode, 'service');
+                    } else {
+                        $service = $this->processInlineService($childNode);
+                    }
+                    break;
+                }
+            }
+
+            return '->factory(['.$service.', ' . $this->formatString($method) . '])';
         }
 
         // Service::method form
@@ -826,17 +855,29 @@ class XmlToPhpConfigConverter
             return '->'.$methodName.'([' . $this->formatString($class) . ', ' . $this->formatString($method) . '])';
         }
 
-        // self::method form
-        if ($callable->hasAttribute('method')) {
-            $method = $callable->getAttribute('method');
-            return '->'.$methodName.'([null, ' . $this->formatString($method) . '])';
-        }
-
         // Service::method form
         if ($callable->hasAttribute('service') && $callable->hasAttribute('method')) {
             $service = $callable->getAttribute('service');
             $method = $callable->getAttribute('method');
             return '->'.$methodName.'([service(' . $this->formatString($service) . '), ' . $this->formatString($method) . '])';
+        }
+
+        // self::method form
+        if ($callable->hasAttribute('method')) {
+            $method = $callable->getAttribute('method');
+            $service = 'null';
+            foreach ($callable->childNodes as $childNode) {
+                if ($childNode instanceof \DOMElement && $childNode->nodeName === 'service') {
+                    if ($childNode->hasAttribute('id')) {
+                        $service = $this->processServiceReference($childNode, 'service');
+                    } else {
+                        $service = $this->processInlineService($childNode);
+                    }
+                    break;
+                }
+            }
+
+            return '->'.$methodName.'(['.$service.', ' . $this->formatString($method) . '])';
         }
 
         // Function form

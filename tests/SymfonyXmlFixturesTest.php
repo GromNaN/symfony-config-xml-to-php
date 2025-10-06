@@ -32,6 +32,13 @@ class SymfonyXmlFixturesTest extends TestCase
         'namespaces.xml' => 'Uses custom namespaces not supported by the converter',
         'services_with_service_locator_argument.xml' => 'Inline services are flattened in the PHP dumper, so the structure is different',
         'services_with_invalid_enumeration.xml' => 'Invalid enumeration value make PHP loader to fail',
+        'services9.xml' => 'Inline services are flattened in the PHP dumper, so the structure is different',
+        'services21.xml' => 'Inline services are flattened in the PHP dumper, so the structure is different',
+        'services_inline_not_candidate.xml' => 'Inline services are flattened in the PHP dumper, so the structure is different',
+        'services_tsantos.xml' => 'Inline services are flattened in the PHP dumper, so the structure is different',
+        'services4_bad_import_file_not_found.xml' => 'Imported file does not exist',
+        'services4_bad_import.xml' => 'Imported file does not exist',
+        'stack.xml' => 'Abstract definition in a stack is not supported by PHP-DSL',
     ];
 
     #[DataProvider('provideXmlFiles')]
