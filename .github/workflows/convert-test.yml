@@ -38,3 +38,6 @@ jobs:
         name: converted-php-files
         path: output/
         retention-days: 7
+
+    - name: Run PhpUnit tests
+      run: ./vendor/bin/phpunit --testdox --colors=always

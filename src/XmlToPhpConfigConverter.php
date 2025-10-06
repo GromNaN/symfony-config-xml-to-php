@@ -1,7 +1,7 @@
 <?php
 
 /*
- * This file is part of the symfony-config-xml-to-php package.
+ * This file is part of the gromnan/symfony-config-xml-to-php package.
  *
  * (c) Jérôme Tamarelle <jerome@tamarelle.net>
  *
