@@ -123,7 +123,7 @@ class XmlToPhpConfigConverter
 
             $output .= sprintf('%s$container->import(%s',
                 $this->nl(),
-                $this->formatString($resource)
+                $this->formatString(preg_replace('/\.xml$/', '.php', $resource))
             );
 
             if ($type) {
@@ -206,7 +206,7 @@ class XmlToPhpConfigConverter
 
         return match ($type) {
             'string' => $this->formatString($value),
-            'constant' => 'constant('.$this->formatString($value).')',
+            'constant' => '\\'.ltrim($value, '\\'),
             'binary' => 'base64_decode('.$this->formatString($value).')',
             default => $this->formatValue($value),
         };
@@ -290,6 +290,10 @@ class XmlToPhpConfigConverter
         }
 
         $this->indentLevel++;
+        $output .= $this->formatBooleanAttribute($service, 'shared', $this->nl() . '->share()', $this->nl() . '->share(false)');
+        $output .= $this->formatBooleanAttribute($service, 'public', $this->nl() . '->public()', $this->nl() . '->private()');
+        $output .= $this->formatBooleanAttribute($service, 'synthetic', $this->nl() . '->synthetic()', $this->nl() . '->synthetic(false)');
+        $output .= $this->formatBooleanAttribute($service, 'abstract', $this->nl() . '->abstract()', $this->nl() . '->abstract(false)');
         $output .= $this->processServiceConfiguration($service);
         $this->indentLevel--;
 
@@ -313,11 +317,6 @@ class XmlToPhpConfigConverter
     {
         $output = '';
         // Service attributes
-        $output .= $this->formatBooleanAttribute($service, 'shared', $this->nl() . '->share()', $this->nl() . '->share(false)');
-        $output .= $this->formatBooleanAttribute($service, 'public', $this->nl() . '->public()', $this->nl() . '->private()');
-        $output .= $this->formatBooleanAttribute($service, 'synthetic', $this->nl() . '->synthetic()', $this->nl() . '->synthetic(false)');
-        $output .= $this->formatBooleanAttribute($service, 'abstract', $this->nl() . '->abstract()', $this->nl() . '->abstract(false)');
-
         if ($service->hasAttribute('lazy')) {
             $lazy = $service->getAttribute('lazy');
             if ($lazy === 'true' || $lazy === '1') {
@@ -681,7 +680,7 @@ class XmlToPhpConfigConverter
         }
 
         if ($type === 'constant') {
-            return "constant({$this->formatString($value)})";
+            return '\\'.ltrim($value, '\\');
         }
 
         if ($type === 'binary') {
@@ -793,6 +792,13 @@ class XmlToPhpConfigConverter
             return '->factory([service(' . $this->formatString($service) . '), ' . $this->formatString($method) . '])';
         }
 
+        // Service form
+        if ($factory->hasAttribute('service')) {
+            $service = $factory->getAttribute('service');
+            $method = $factory->getAttribute('method');
+            return '->factory([service(' . $this->formatString($service) . ')])';
+        }
+
         // Function form
         if ($factory->hasAttribute('function')) {
             $function = $factory->getAttribute('function');
@@ -872,7 +878,7 @@ class XmlToPhpConfigConverter
         $tagName = $tagNameComesFromAttribute ? $tag->getAttribute('name') : $tag->nodeValue;
 
         if (!$tagName) {
-            throw new \LogicException(' The tag name for must be a non-empty string.');
+            throw new \LogicException(' The tag name must be a non-empty string.');
         }
 
         $method = $isResource ? '->resourceTag(' : '->tag(';
@@ -1017,7 +1023,7 @@ class XmlToPhpConfigConverter
      */
     private function formatString(string $value): string
     {
-        if (class_exists($value)) {
+        if (class_exists($value) || interface_exists($value) || trait_exists($value) || enum_exists($value)) {
             return '\\'.ltrim($value, '\\') . '::class';
         }
 
