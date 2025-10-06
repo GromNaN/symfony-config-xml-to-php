@@ -378,7 +378,7 @@ class XmlToPhpConfigConverter
 
             $output .= $this->nl() . match ($childNode->nodeName) {
                 'file' => '->file(' . $this->formatString(trim($childNode->nodeValue)) . ')',
-                'factory' => $this->processFactory($childNode),
+                'factory' => $this->processCallable($childNode, 'factory'),
                 'from-callable' => $this->processCallable($childNode, 'fromCallable'),
                 'configurator' => $this->processCallable($childNode, 'configurator'),
                 'call' => $this->processCall($childNode),
@@ -465,7 +465,7 @@ class XmlToPhpConfigConverter
             }
 
             $output .= $this->nl() . match ($childNode->nodeName) {
-                'factory' => $this->processFactory($childNode),
+                'factory' => $this->processCallable($childNode, 'factory'),
                 'configurator' => $this->processCallable($childNode, 'configurator'),
                 'call' => $this->processCall($childNode),
                 'tag' => $this->processTag($childNode),
@@ -782,65 +782,6 @@ class XmlToPhpConfigConverter
         $this->indentLevel--;
 
         return $output . $this->nl().'])';
-    }
-
-    /**
-     * Process a factory element
-     */
-    private function processFactory(\DOMElement $factory): string
-    {
-        // Class::method form
-        if ($factory->hasAttribute('class') && $factory->hasAttribute('method')) {
-            $class = $factory->getAttribute('class');
-            $method = $factory->getAttribute('method');
-            return '->factory([' . $this->formatString($class) . ', ' . $this->formatString($method) . '])';
-        }
-
-        // self::method form
-        if ($factory->hasAttribute('method')) {
-            $method = $factory->getAttribute('method');
-            $service = 'null';
-            foreach ($factory->childNodes as $childNode) {
-                if ($childNode instanceof \DOMElement && $childNode->nodeName === 'service') {
-                    if ($childNode->hasAttribute('id')) {
-                        $service = $this->processServiceReference($childNode, 'service');
-                    } else {
-                        $service = $this->processInlineService($childNode);
-                    }
-                    break;
-                }
-            }
-
-            return '->factory(['.$service.', ' . $this->formatString($method) . '])';
-        }
-
-        // Service::method form
-        if ($factory->hasAttribute('service') && $factory->hasAttribute('method')) {
-            $service = $factory->getAttribute('service');
-            $method = $factory->getAttribute('method');
-            return '->factory([service(' . $this->formatString($service) . '), ' . $this->formatString($method) . '])';
-        }
-
-        // Service form
-        if ($factory->hasAttribute('service')) {
-            $service = $factory->getAttribute('service');
-            $method = $factory->getAttribute('method');
-            return '->factory([service(' . $this->formatString($service) . ')])';
-        }
-
-        // Function form
-        if ($factory->hasAttribute('function')) {
-            $function = $factory->getAttribute('function');
-            return '->factory(' . $this->formatString($function) . ')';
-        }
-
-        // Expression form
-        if ($factory->hasAttribute('expression')) {
-            $expression = $factory->getAttribute('expression');
-            return '->factory(expr(' . $this->formatString($expression) . '))';
-        }
-
-        throw new \LogicException(sprintf('Invalid factory definition in XML: %s', $factory->ownerDocument->saveXML($factory)));
     }
 
     /**
