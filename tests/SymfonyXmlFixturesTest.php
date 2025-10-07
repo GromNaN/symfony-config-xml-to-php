@@ -90,7 +90,8 @@ class SymfonyXmlFixturesTest extends TestCase
             ->sortByName()
         ;
 
-        foreach ($files as $file) {
+        // Reverse order so that services30.xml is processed before services29.xml that imports it
+        foreach (array_reverse(iterator_to_array($files)) as $file) {
             yield $file->getRelativePathname() => [$file];
         }
     }
