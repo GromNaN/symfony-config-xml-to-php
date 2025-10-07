@@ -11,6 +11,8 @@
 
 namespace GromNaN\SymfonyConfigXmlToPhp;
 
+use Symfony\Component\DependencyInjection\ContainerInterface;
+
 class XmlToPhpConfigConverter
 {
     private int $indentLevel;
@@ -121,17 +123,19 @@ class XmlToPhpConfigConverter
             $ignoreErrors = $import->getAttribute('ignore-errors');
             $type = $import->getAttribute('type');
 
-            $output .= sprintf('%s$container->import(%s',
-                $this->nl(),
-                $this->formatString(preg_replace('/\.xml$/', '.php', $resource))
-            );
-
-            if ($type) {
-                $output .= sprintf(', %s', $this->formatString($type));
+            $output .= $this->nl().'$container->import(';
+            $output .= $this->formatString(preg_replace('/\.xml$/', '.php', $resource));
+            if ($type || $ignoreErrors) {
+                $output .= ', ';
+                $output .= str_replace('xml', 'php', $type) ?: 'null';
             }
-
-            if ($ignoreErrors === 'not_found') {
-                $output .= ', true';
+            if ($import->hasAttribute('ignore-errors')) {
+                $output .= ', ';
+                $output .= match ($ignoreErrors) {
+                    'not_found' => $this->formatString('not_found'),
+                    'true', '1' => 'true',
+                    default => 'false',
+                };
             }
 
             $output .= ');';
@@ -350,7 +354,7 @@ class XmlToPhpConfigConverter
             }
 
             if ($decorationOnInvalid !== null) {
-                $output .= ', ' . $this->formatString($decorationOnInvalid);
+                $output .= ', ' . $this->processInvalidBehaviorConstant($decorationOnInvalid);
             }
 
             $output .= ')';
@@ -407,6 +411,16 @@ class XmlToPhpConfigConverter
         };
 
         return $output;
+    }
+
+    private function processInvalidBehaviorConstant(string $value): string
+    {
+        return '\\'.ContainerInterface::class.'::'.match ($value) {
+            'ignore', (string) ContainerInterface::IGNORE_ON_INVALID_REFERENCE => 'IGNORE_ON_INVALID_REFERENCE',
+            'null', (string) ContainerInterface::NULL_ON_INVALID_REFERENCE => 'NULL_ON_INVALID_REFERENCE',
+            'ignore_uninitialized', (string) ContainerInterface::IGNORE_ON_UNINITIALIZED_REFERENCE => 'IGNORE_ON_UNINITIALIZED_REFERENCE',
+            'exception', (string) ContainerInterface::EXCEPTION_ON_INVALID_REFERENCE => 'EXCEPTION_ON_INVALID_REFERENCE',
+        };
     }
 
     /**
@@ -592,12 +606,10 @@ class XmlToPhpConfigConverter
 
         // If there's only one argument, use ->args([...])
         if (count($arguments) === 1) {
-            $key = '';
             $arg = current($arguments);
+            $key = $arg->getAttribute('key');
             if ($arg->hasAttribute('index')) {
                 $key = 'index_'.$arg->getAttribute('index');
-            } elseif ($arg->hasAttribute('key')) {
-                $key = $arg->getAttribute('key');
             }
             if ($key) {
                 return '[' . $this->formatString($key) . ' => ' . $this->formatArgument($arg) . ']';
@@ -606,14 +618,17 @@ class XmlToPhpConfigConverter
             return '[' . $this->formatArgument($arg) . ']';
         }
 
-        $output = $this->nl() . '[';
+        $output = '[';
         $this->indentLevel++;
         foreach ($arguments as $arg) {
             if (!$arg instanceof \DOMElement) {
                 continue;
             }
-
-            if ($key = $arg->getAttribute('key')) {
+            $key = $arg->getAttribute('key');
+            if ($arg->hasAttribute('index')) {
+                $key = $arg->getAttribute('index');
+            }
+            if ($key) {
                 $output .= $this->nl() . $this->formatString($key) . ' => ' . $this->formatArgument($arg) . ',';
             } else {
                 $output .= $this->nl() . $this->formatArgument($arg) . ',';
@@ -716,12 +731,20 @@ class XmlToPhpConfigConverter
             return $this->processServiceLocator($argument);
         }
 
+        if ($type === 'iterator') {
+            return 'iterator(' . ($this->formatArguments($argument) ?? '[]') . ')';
+        }
+
         if ($type === 'abstract') {
             return 'abstract_arg('.$this->formatString($value).')';
         }
 
-        // Default handling (treat as string or convert to appropriate PHP value)
-        return $this->formatValue($value);
+        if ($type === null) {
+            // Default handling (treat as string or convert to appropriate PHP value)
+            return $this->formatValue($value);
+        }
+
+        throw new \RuntimeException(sprintf('Unsupported argument type: %s', $type));
     }
 
     private function processTagged(string $method, \DOMElement $argument): string

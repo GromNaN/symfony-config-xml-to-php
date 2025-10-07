@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services
+                               http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <!-- Import section -->
+    <imports>
+        <import resource="imported_file.xml" />
+        <import resource="optional_file.xml" ignore-errors="true" />
+    </imports>
+
+    <!-- Parameters section -->
+    <parameters>
+        <!-- Simple parameters -->
+        <parameter key="database_host">localhost</parameter>
+        <parameter key="database_port">3306</parameter>
+        <parameter key="database_name">symfony</parameter>
+        <parameter key="database_user">root</parameter>
+        <parameter key="database_password">password</parameter>
+
+        <!-- Typed parameters -->
+        <parameter key="mailer.enabled" type="string">true</parameter>
+        <parameter key="env_param">%env(APP_ENV)%</parameter>
+        <parameter key="const_param" type="constant">PHP_VERSION</parameter>
+        <parameter key="binary_content" type="binary">SGVsbG8gd29ybGQh</parameter>
+
+        <!-- Collection parameter -->
+        <parameter key="locales" type="collection">
+            <parameter>en</parameter>
+            <parameter>fr</parameter>
+            <parameter>de</parameter>
+        </parameter>
+
+        <!-- Nested collection -->
+        <parameter key="doctrine.connections" type="collection">
+            <parameter key="default" type="collection">
+                <parameter key="driver">pdo_mysql</parameter>
+                <parameter key="charset">utf8mb4</parameter>
+            </parameter>
+            <parameter key="backup" type="collection">
+                <parameter key="driver">pdo_sqlite</parameter>
+                <parameter key="memory">true</parameter>
+            </parameter>
+        </parameter>
+    </parameters>
+
+    <!-- Services section -->
+    <services>
+        <!-- Service defaults -->
+        <defaults autowire="true" autoconfigure="true" public="false">
+            <tag name="app.tagged_by_default" />
+            <bind key="$defaultParam">default value</bind>
+        </defaults>
+
+        <!-- Abstract service definition -->
+        <service id="app.abstract_service" class="App\Service\AbstractService" abstract="true">
+            <tag name="app.abstract" />
+            <call method="setLogger">
+                <argument type="service" id="logger" />
+            </call>
+        </service>
+
+        <!-- Service with constructor arguments -->
+        <service id="app.mailer" class="App\Service\Mailer">
+            <argument>%mailer.transport%</argument>
+            <argument type="service" id="mailer.transport" />
+            <argument type="collection">
+                <argument key="host">%mailer.host%</argument>
+                <argument key="port">%mailer.port%</argument>
+                <argument key="encryption">%mailer.encryption%</argument>
+            </argument>
+            <argument type="constant">DATE_RFC2822</argument>
+            <argument type="binary">SGVsbG8gd29ybGQh</argument>
+        </service>
+
+        <!-- Service with indexed arguments -->
+        <service id="app.indexed_service" class="App\Service\IndexedService">
+            <argument index="0">first argument</argument>
+            <argument index="2">third argument</argument>
+            <argument index="1">second argument</argument>
+        </service>
+
+        <!-- Service with property injection -->
+        <service id="app.newsletter_manager" class="App\Service\NewsletterManager">
+            <property name="mailer" type="service" id="app.mailer" />
+            <property name="enabled">true</property>
+            <property name="sender">sender@example.com</property>
+        </service>
+
+        <!-- Service with tags -->
+        <service id="app.mail_logger" class="App\Logger\MailLogger" parent="app.abstract_service">
+            <tag name="monolog.logger" channel="mail" />
+            <tag name="app.important_service" priority="20" />
+            <tag name="kernel.event_listener">
+                <attribute name="event">kernel.exception</attribute>
+                <attribute name="method">onKernelException</attribute>
+                <attribute name="priority">50</attribute>
+            </tag>
+        </service>
+
+        <!-- Factory service -->
+        <service id="app.newsletter_manager_factory" class="App\Factory\NewsletterManagerFactory" />
+        <service id="app.newsletter_manager_from_factory" class="App\Service\NewsletterManager">
+            <factory service="app.newsletter_manager_factory" method="createNewsletterManager" />
+            <argument>%app.default_sender%</argument>
+        </service>
+
+        <!-- Static factory -->
+        <service id="app.logger_from_static" class="App\Logger\Logger">
+            <factory class="App\Factory\LoggerFactory" method="createLogger" />
+            <argument>app</argument>
+        </service>
+
+        <!-- Expression factory -->
+        <service id="app.expression_factory" class="App\Service\DynamicService">
+            <factory expression="service('app.factory_provider').getSpecificFactory('dynamic')" />
+            <argument>dynamic-argument</argument>
+        </service>
+
+        <!-- Method calls -->
+        <service id="app.processor" class="App\Service\Processor">
+            <call method="setLogger">
+                <argument type="service" id="logger" />
+            </call>
+            <call method="addPlugin">
+                <argument>plugin1</argument>
+            </call>
+            <call method="configure">
+                <argument type="collection">
+                    <argument key="option1">value1</argument>
+                    <argument key="option2">value2</argument>
+                </argument>
+            </call>
+            <call method="setCloner" returns-clone="true" />
+        </service>
+
+        <!-- Autowired service -->
+        <service id="app.controller" class="App\Controller\MainController" autowire="true" autoconfigure="true" />
+
+        <!-- Lazy service -->
+        <service id="app.heavy_service" class="App\Service\HeavyService" lazy="true" />
+
+        <!-- Synthetic service -->
+        <service id="app.request" synthetic="true" public="true" />
+
+        <!-- Service alias -->
+        <service id="app.mailer_alias" alias="app.mailer" public="true" />
+
+        <!-- Decorated service -->
+        <service id="app.decorator" class="App\Decorator\ServiceDecorator" decorates="app.mailer"
+                 decoration-priority="5" decoration-inner-name="app.original_mailer"
+                 decoration-on-invalid="null">
+            <argument type="service" id="app.original_mailer" />
+        </service>
+
+        <!-- Tagged services collection -->
+        <service id="app.plugin_manager" class="App\Service\PluginManager">
+            <argument type="tagged_iterator" tag="app.plugin" index-by="key" default-index-method="getPluginName" default-priority-method="getPriority" />
+        </service>
+
+        <!-- Tagged service locator -->
+        <service id="app.handler_resolver" class="App\Service\HandlerResolver">
+            <argument type="tagged_locator" tag="app.handler" index-by="type" />
+        </service>
+
+        <!-- Service locator -->
+        <service id="app.service_locator" class="stdClass">
+            <argument type="service_locator">
+                <argument key="mailer" type="service" id="app.mailer" />
+                <argument key="logger" type="service" id="logger" />
+            </argument>
+        </service>
+
+        <!-- Service with bindings -->
+        <service id="app.command" class="App\Command\ImportCommand">
+            <bind key="$dsn">%app.database_dsn%</bind>
+            <bind key="$logger" type="service" id="logger" />
+            <bind key="$importers" type="tagged_iterator" tag="app.importer" />
+            <bind key="$environment">%kernel.environment%</bind>
+        </service>
+
+        <!-- Instanceof conditionals -->
+        <instanceof id="App\Interface\LoggableInterface">
+            <tag name="app.loggable" />
+            <call method="setLogger">
+                <argument type="service" id="logger" />
+            </call>
+        </instanceof>
+
+        <instanceof id="App\Interface\CacheableInterface">
+            <tag name="app.cacheable" />
+            <call method="setCache">
+                <argument type="service" id="cache.app" />
+            </call>
+        </instanceof>
+
+        <!-- Autoconfigured service -->
+        <service id="app.event_subscriber" class="App\EventSubscriber\AppSubscriber" autoconfigure="true" />
+
+        <!-- Prototype services -->
+        <prototype namespace="Tests\Fixtures\" resource="../" exclude="./">
+            <tag name="controller.service_arguments" />
+            <call method="setContainer">
+                <argument type="service" id="service_container" />
+            </call>
+        </prototype>
+
+        <prototype namespace="Tests\Fixtures\" resource="../" exclude="./">
+            <tag name="console.command" />
+            <tag name="monolog.logger" channel="command" />
+        </prototype>
+
+        <!-- Stack services -->
+        <stack id="app.middleware_stack">
+            <service class="App\Middleware\CorsMiddleware" />
+            <service class="App\Middleware\SecurityMiddleware" />
+            <service class="App\Middleware\CacheMiddleware" />
+            <service class="App\Middleware\LoggerMiddleware">
+                <argument type="service" id="logger" />
+            </service>
+        </stack>
+
+        <!-- Deprecated service -->
+        <service id="app.deprecated_mailer" class="App\Service\LegacyMailer">
+            <deprecated package="app/mailer" version="2.0">The "%service_id%" service is deprecated, use "app.mailer" instead.</deprecated>
+        </service>
+
+        <!-- File inclusions -->
+        <service id="app.config_provider" class="App\Service\ConfigProvider">
+            <file>%kernel.project_dir%/config/legacy_config.php</file>
+        </service>
+    </services>
+
+    <!-- Environment specific configuration -->
+    <when env="dev">
+        <services>
+            <service id="app.dev_logger" class="App\Logger\DevLogger" public="true">
+                <tag name="monolog.logger" channel="dev" />
+            </service>
+        </services>
+    </when>
+
+    <when env="test">
+        <parameters>
+            <parameter key="database_host">localhost</parameter>
+            <parameter key="database_name">symfony_test</parameter>
+        </parameters>
+    </when>
+
+</container>
