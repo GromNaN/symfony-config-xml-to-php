@@ -1,0 +1,43 @@
+name: Convert XML Fixtures
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.4'
+        coverage: none
+
+
+    - name: "Install dependencies with Composer"
+      uses: "ramsey/composer-install@v3"
+      with:
+        composer-options: "--prefer-dist"
+
+    - name: "Get Symfony Dependency Injection Fixtures"
+      run: composer reinstall --prefer-source symfony/dependency-injection
+
+    - name: Run conversion on Symfony test fixtures
+      run: ./bin/convert vendor/symfony/dependency-injection/Tests/Fixtures/xml/ output/
+
+    - name: Archive converted files
+      uses: actions/upload-artifact@v4
+      with:
+        name: converted-php-files
+        path: output/
+        retention-days: 7
+
+    - name: Run PhpUnit tests
+      run: ./vendor/bin/phpunit --testdox --colors=always
