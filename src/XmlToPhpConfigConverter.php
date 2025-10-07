@@ -302,7 +302,7 @@ class XmlToPhpConfigConverter
 
     private function processInlineService(\DOMElement $service): string
     {
-        $class = $service->getAttribute('class') ?? throw new \LogicException('Inline service must have a class attribute.');
+        $class = $service->getAttribute('class') ?: throw new \LogicException('Inline service must have a class attribute.');
         $output = sprintf('inline_service(%s)', $this->formatString($class));
 
         // Process service configuration
@@ -645,7 +645,7 @@ class XmlToPhpConfigConverter
 
                 $itemKey = $item->getAttribute('key') ?: $item->getAttribute('name');
 
-                $itemKey = match($item->getAttribute('key-type')) {
+                $itemKey = match ($item->getAttribute('key-type')) {
                     'constant' => '\\'.ltrim($itemKey, '\\'),
                     'binary' => 'base64_decode('.$this->formatString($itemKey).')',
                     default => $this->formatString($itemKey),

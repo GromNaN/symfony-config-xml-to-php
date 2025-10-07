@@ -58,7 +58,7 @@ final class ConvertCommand extends Command
             foreach ($files as $file) {
                 $this->processFile($io, $file, $target, $converter);
             }
-        } else if (is_file($source) && pathinfo($source, PATHINFO_EXTENSION) === 'xml') {
+        } elseif (is_file($source) && pathinfo($source, PATHINFO_EXTENSION) === 'xml') {
             $file = new SplFileInfo($source, dirname($source), $source);
             $this->processFile($io, $file, $target, $converter);
         } else {
@@ -142,7 +142,7 @@ final class ConvertCommand extends Command
         $io->error('Validation failed: '.$phpFile);
 
         $replace = [
-            '~^([\-\w]*?)$~m' => '<fg=reg>$1</>',
+            '~^([\-\w]*?)$~m' => '<fg=red>$1</>',
             '~^([\+\w]*?)$~m' => '<fg=green>$1</>',
         ];
 
