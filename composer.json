@@ -13,6 +13,9 @@
             "Tests\\": "tests/"
         }
     },
+    "bin": [
+        "bin/convert"
+    ],
     "authors": [
         {
             "name": "Jérôme Tamarelle",
