@@ -12,12 +12,12 @@ Install:
 
 Run the script for a directory:
 
-    bin/console src/Symfony/Bundle/Resources/config/
+    vendor/bin/convert src/Symfony/Bundle/Resources/config/
 
 
 Or for a single file:
 
-    bin/console src/Symfony/Bundle/Resources/config/services.xml
+    vendor/bin/convert src/Symfony/Bundle/Resources/config/services.xml
 
 ## Contributing
 
