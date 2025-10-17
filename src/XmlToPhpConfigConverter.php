@@ -104,6 +104,10 @@ class XmlToPhpConfigConverter
      */
     private function processElement(\DOMElement $element): string
     {
+        if ($element->namespaceURI !== 'http://symfony.com/schema/dic/services') {
+            throw new \RuntimeException('Converting XML config files containing configuration for extensions is not supported.');
+        }
+
         return match ($element->nodeName) {
             'imports' => $this->processImports($element),
             'parameters' => $this->processParameters($element),
