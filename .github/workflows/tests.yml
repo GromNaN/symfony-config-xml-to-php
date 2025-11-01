@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
@@ -33,7 +33,7 @@ jobs:
       run: ./bin/convert vendor/symfony/dependency-injection/Tests/Fixtures/xml/ output/
 
     - name: Archive converted files
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: converted-php-files
         path: output/
