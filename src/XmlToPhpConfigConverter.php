@@ -46,7 +46,7 @@ class XmlToPhpConfigConverter
         $output .= $this->nl(0);
 
         // Explicitly use functions from the Configurator namespace, to help static analysis tools
-        foreach (['service', 'inline_service', 'service_locator', 'iterator', 'expr', 'abstract_arg', 'env', 'service_closure', 'closure'] as $functionName) {
+        foreach (['service', 'inline_service', 'service_locator', 'iterator', 'expr', 'abstract_arg', 'env', 'service_closure', 'closure', 'tagged_iterator', 'tagged_locator'] as $functionName) {
             $output .= $this->nl().'use function \\Symfony\\Component\\DependencyInjection\\Loader\\Configurator\\'.$functionName.';';
         }
         $output .= $this->nl(0);
