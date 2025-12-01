@@ -81,6 +81,13 @@
             <argument index="1">second argument</argument>
         </service>
 
+        <!-- Service with arguments without explicit index -->
+        <service id="app.indexed_service_no_key" class="App\Service\IndexedService">
+            <argument>first argument</argument>
+            <argument>second argument</argument>
+            <argument>third argument</argument>
+        </service>
+
         <!-- Service with property injection -->
         <service id="app.newsletter_manager" class="App\Service\NewsletterManager">
             <property name="mailer" type="service" id="app.mailer" />

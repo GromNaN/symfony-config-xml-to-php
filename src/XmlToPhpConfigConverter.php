@@ -664,14 +664,14 @@ class XmlToPhpConfigConverter
 
                 $itemKey = $item->getAttribute('key') ?: $item->getAttribute('name');
 
-                $itemKey = match ($item->getAttribute('key-type')) {
+                $itemKeyFormatted = match ($item->getAttribute('key-type')) {
                     'constant' => '\\'.ltrim($itemKey, '\\'),
                     'binary' => 'base64_decode('.$this->formatString($itemKey).')',
                     default => $this->formatString($itemKey),
                 };
 
                 if ($itemKey) {
-                    $items[] =  $itemKey . ' => ' . $this->formatArgument($item);
+                    $items[] =  $itemKeyFormatted . ' => ' . $this->formatArgument($item);
                 } else {
                     $items[] = $this->formatArgument($item);
                 }
