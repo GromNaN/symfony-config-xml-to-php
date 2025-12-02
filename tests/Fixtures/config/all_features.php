@@ -2,13 +2,13 @@
 
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
-return static function(ContainerConfigurator $container) {
+return static function (ContainerConfigurator $container) {
     $services = $container->services();
     $parameters = $container->parameters();
     // Import section
     $container->import('imported_file.php');
     $container->import('optional_file.php', null, true);
-    
+
     // Parameters section
     $parameters->set('database_host', 'localhost');
     $parameters->set('database_port', 3306);

@@ -44,7 +44,7 @@ class XmlToPhpConfigConverter
         $output .= $this->nl(0);
         $output .= $this->nl().'namespace Symfony\Component\DependencyInjection\Loader\Configurator;';
         $output .= $this->nl(0);
-        $output .= $this->nl().'return static function(ContainerConfigurator $container) {';
+        $output .= $this->nl().'return static function (ContainerConfigurator $container) {';
 
         // Process the root container element and its children
         $this->indentLevel++;
@@ -145,7 +145,7 @@ class XmlToPhpConfigConverter
             $output .= ');';
         }
 
-        return $output . $this->nl();
+        return $output . $this->nl(0);
     }
 
     /**
@@ -157,7 +157,8 @@ class XmlToPhpConfigConverter
         $output = '';
         if ($parametersKey) {
             // For collection parameters with key
-            $output .= sprintf('%s$parameters->set(%s, []);',
+            $output .= sprintf(
+                '%s$parameters->set(%s, []);',
                 $this->nl(),
                 $this->formatString($parametersKey)
             );
@@ -602,7 +603,7 @@ class XmlToPhpConfigConverter
     private function formatArguments(\DOMElement $element): ?string
     {
         /** @var \DOMElement[] $arguments */
-        $arguments = array_filter(iterator_to_array($element->childNodes), fn(\DOMNode $node) => $node instanceof \DOMElement && $node->nodeName === 'argument');
+        $arguments = array_filter(iterator_to_array($element->childNodes), fn (\DOMNode $node) => $node instanceof \DOMElement && $node->nodeName === 'argument');
 
         if (count($arguments) === 0) {
             return null;
