@@ -20,6 +20,7 @@ use Symfony\Component\Finder\SplFileInfo;
 #[CoversClass(XmlToPhpConfigConverter::class)]
 class SymfonyXmlFixturesTest extends TestCase
 {
+    // depends on 'symfony/dependency-injection' and used installation method - from source (git; with tests presented)
     private const FIXTURE_DIR = __DIR__.'/../vendor/symfony/dependency-injection/Tests/Fixtures/xml/';
 
     private const SKIPPED = [
