@@ -119,6 +119,7 @@ final class ConvertCommand extends Command
             $xmlContainer = new ContainerBuilder();
             $xmlLoader = new XmlFileLoader($xmlContainer, new FileLocator());
             $xmlLoader->load(realpath($xmlFile));
+            $xmlContainer->getParameterBag()->remove('.container.known_envs');
         } catch (LoaderLoadException|InvalidArgumentException|LogicException $e) {
             $io->writeln(sprintf('Skip XML file with error "%s": %s', $xmlFile, $e->getMessage()));
 
@@ -128,6 +129,7 @@ final class ConvertCommand extends Command
         $phpContainer = new ContainerBuilder();
         $phpLoader = new PhpFileLoader($phpContainer, new FileLocator());
         $phpLoader->load(realpath($phpFile));
+        $phpContainer->getParameterBag()->remove('.container.known_envs');
 
         $xmlDump = new XmlDumper($xmlContainer)->dump();
         $phpDump = new XmlDumper($phpContainer)->dump();
