@@ -55,6 +55,7 @@ class SymfonyXmlFixturesTest extends TestCase
             $xmlContainer = new ContainerBuilder();
             $xmlLoader = new XmlFileLoader($xmlContainer, new FileLocator());
             $xmlLoader->load($xmlFile->getRealPath());
+            $xmlContainer->getParameterBag()->remove('.container.known_envs');
         } catch (LoaderLoadException|InvalidArgumentException|LogicException $e) {
             self::markTestSkipped(sprintf('Skip XML file with error "%s": %s', $xmlFile->getFilename(), $e->getMessage()));
         }
@@ -71,6 +72,7 @@ class SymfonyXmlFixturesTest extends TestCase
         $phpContainer = new ContainerBuilder();
         $phpLoader = new PhpFileLoader($phpContainer, new FileLocator());
         $phpLoader->load($phpFile);
+        $phpContainer->getParameterBag()->remove('.container.known_envs');
 
         $xmlDump = new XmlDumper($xmlContainer)->dump();
         $phpDump = new XmlDumper($phpContainer)->dump();
