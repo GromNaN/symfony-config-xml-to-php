@@ -30,12 +30,12 @@ return static function (ContainerConfigurator $container) {
         ->tag('app.tagged_by_default')
         ->bind('$defaultParam', 'default value');
 
-    $services->set('app.abstract_service', 'App\Service\AbstractService')
+    $services->set('app.abstract_service', \App\Service\AbstractService::class)
         ->abstract()
         ->tag('app.abstract')
         ->call('setLogger', [service('logger')]);
 
-    $services->set('app.mailer', 'App\Service\Mailer')
+    $services->set('app.mailer', \App\Service\Mailer::class)
         ->args([
             '%mailer.transport%',
             service('mailer.transport'),
@@ -44,56 +44,56 @@ return static function (ContainerConfigurator $container) {
             base64_decode('SGVsbG8gd29ybGQh'),
         ]);
 
-    $services->set('app.indexed_service', 'App\Service\IndexedService')
+    $services->set('app.indexed_service', \App\Service\IndexedService::class)
         ->args([
             'first argument',
             '2' => 'third argument',
             '1' => 'second argument',
         ]);
 
-    $services->set('app.indexed_service_no_key', 'App\Service\IndexedService')
+    $services->set('app.indexed_service_no_key', \App\Service\IndexedService::class)
         ->args([
             'first argument',
             'second argument',
             'third argument',
         ]);
 
-    $services->set('app.newsletter_manager', 'App\Service\NewsletterManager')
+    $services->set('app.newsletter_manager', \App\Service\NewsletterManager::class)
         ->property('mailer', service('app.mailer'))
         ->property('enabled', true)
         ->property('sender', 'sender@example.com');
 
-    $services->set('app.mail_logger', 'App\Logger\MailLogger')
+    $services->set('app.mail_logger', \App\Logger\MailLogger::class)
         ->parent('app.abstract_service')
         ->tag('monolog.logger', ['channel' => 'mail'])
         ->tag('app.important_service', ['priority' => 20])
         ->tag('kernel.event_listener', ['event' => 'kernel.exception', 'method' => 'onKernelException', 'priority' => 50]);
 
-    $services->set('app.newsletter_manager_factory', 'App\Factory\NewsletterManagerFactory');
+    $services->set('app.newsletter_manager_factory', \App\Factory\NewsletterManagerFactory::class);
 
-    $services->set('app.newsletter_manager_from_factory', 'App\Service\NewsletterManager')
+    $services->set('app.newsletter_manager_from_factory', \App\Service\NewsletterManager::class)
         ->args(['%app.default_sender%'])
         ->factory([service('app.newsletter_manager_factory'), 'createNewsletterManager']);
 
-    $services->set('app.logger_from_static', 'App\Logger\Logger')
+    $services->set('app.logger_from_static', \App\Logger\Logger::class)
         ->args(['app'])
-        ->factory(['App\Factory\LoggerFactory', 'createLogger']);
+        ->factory([\App\Factory\LoggerFactory::class, 'createLogger']);
 
-    $services->set('app.expression_factory', 'App\Service\DynamicService')
+    $services->set('app.expression_factory', \App\Service\DynamicService::class)
         ->args(['dynamic-argument'])
         ->factory(expr('service(\'app.factory_provider\').getSpecificFactory(\'dynamic\')'));
 
-    $services->set('app.processor', 'App\Service\Processor')
+    $services->set('app.processor', \App\Service\Processor::class)
         ->call('setLogger', [service('logger')])
         ->call('addPlugin', ['plugin1'])
         ->call('configure', [['option1' => 'value1', 'option2' => 'value2']])
         ->call('setCloner', returnsClone: true);
 
-    $services->set('app.controller', 'App\Controller\MainController')
+    $services->set('app.controller', \App\Controller\MainController::class)
         ->autowire()
         ->autoconfigure();
 
-    $services->set('app.heavy_service', 'App\Service\HeavyService')
+    $services->set('app.heavy_service', \App\Service\HeavyService::class)
         ->lazy();
 
     $services->set('app.request')
@@ -103,14 +103,14 @@ return static function (ContainerConfigurator $container) {
     $services->alias('app.mailer_alias', 'app.mailer')
         ->public();
 
-    $services->set('app.decorator', 'App\Decorator\ServiceDecorator')
+    $services->set('app.decorator', \App\Decorator\ServiceDecorator::class)
         ->decorate('app.mailer', 'app.original_mailer', 5, \Symfony\Component\DependencyInjection\ContainerInterface::NULL_ON_INVALID_REFERENCE)
         ->args([service('app.original_mailer')]);
 
-    $services->set('app.plugin_manager', 'App\Service\PluginManager')
+    $services->set('app.plugin_manager', \App\Service\PluginManager::class)
         ->args([tagged_iterator('app.plugin', indexAttribute: 'key', defaultIndexMethod: 'getPluginName', defaultPriorityMethod: 'getPriority')]);
 
-    $services->set('app.handler_resolver', 'App\Service\HandlerResolver')
+    $services->set('app.handler_resolver', \App\Service\HandlerResolver::class)
         ->args([tagged_locator('app.handler', indexAttribute: 'type')]);
 
     $services->set('app.service_locator', \stdClass::class)
@@ -119,21 +119,21 @@ return static function (ContainerConfigurator $container) {
             'logger' => service('logger'),
         ])]);
 
-    $services->set('app.command', 'App\Command\ImportCommand')
+    $services->set('app.command', \App\Command\ImportCommand::class)
         ->bind('$dsn', '%app.database_dsn%')
         ->bind('$logger', service('logger'))
         ->bind('$importers', tagged_iterator('app.importer'))
         ->bind('$environment', '%kernel.environment%');
 
-    $services->instanceof('App\Interface\LoggableInterface')
+    $services->instanceof(\App\Interface\LoggableInterface::class)
         ->tag('app.loggable')
         ->call('setLogger', [service('logger')]);
 
-    $services->instanceof('App\Interface\CacheableInterface')
+    $services->instanceof(\App\Interface\CacheableInterface::class)
         ->tag('app.cacheable')
         ->call('setCache', [service('cache.app')]);
 
-    $services->set('app.event_subscriber', 'App\EventSubscriber\AppSubscriber')
+    $services->set('app.event_subscriber', \App\EventSubscriber\AppSubscriber::class)
         ->autoconfigure();
 
     $services->load('Tests\\Fixtures\\', '../')
@@ -150,17 +150,17 @@ return static function (ContainerConfigurator $container) {
         ->tag('console.command')
         ->tag('monolog.logger', ['channel' => 'command']);
 
-    $services->set('app.deprecated_mailer', 'App\Service\LegacyMailer')
+    $services->set('app.deprecated_mailer', \App\Service\LegacyMailer::class)
         ->deprecate('app/mailer', '2.0', 'The "%service_id%" service is deprecated, use "app.mailer" instead.');
 
-    $services->set('app.config_provider', 'App\Service\ConfigProvider')
+    $services->set('app.config_provider', \App\Service\ConfigProvider::class)
         ->file('%kernel.project_dir%/config/legacy_config.php');
     // Environment specific configuration
 
     // Configuration for environment: dev
     if ($container->env() === 'dev') {
 
-        $services->set('app.dev_logger', 'App\Logger\DevLogger')
+        $services->set('app.dev_logger', \App\Logger\DevLogger::class)
             ->public()
             ->tag('monolog.logger', ['channel' => 'dev']);
     }

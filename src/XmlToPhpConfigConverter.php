@@ -1043,7 +1043,8 @@ class XmlToPhpConfigConverter
      */
     private function formatString(string $value): string
     {
-        if (class_exists($value) || interface_exists($value) || trait_exists($value) || enum_exists($value)) {
+        if (class_exists($value) || interface_exists($value) || trait_exists($value) || enum_exists($value)
+        || str_contains($value, '\\') && preg_match('/(?(DEFINE)(?<V>[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*+))^(?&V)(?:\\\\(?&V))*+$/', $value)) {
             return '\\'.ltrim($value, '\\') . '::class';
         }
 

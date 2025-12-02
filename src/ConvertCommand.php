@@ -138,7 +138,6 @@ final class ConvertCommand extends Command
             return true;
         }
 
-
         $differ = new Differ(new UnifiedDiffOutputBuilder());
         $diff = $differ->diff($xmlDump, $phpDump);
         $io->error('Validation failed: '.$phpFile);
