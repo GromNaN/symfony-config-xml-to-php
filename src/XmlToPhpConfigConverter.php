@@ -816,10 +816,18 @@ class XmlToPhpConfigConverter
      */
     private function processCallable(\DOMElement $callable, string $methodName): string
     {
+        // Expression form (factory or from-callable)
+        if ($callable->hasAttribute('expression')) {
+            $expression = $callable->getAttribute('expression');
+
+            return '->'.$methodName.'(expr(' . $this->formatString($expression) . '))';
+        }
+
         // Class::method form
         if ($callable->hasAttribute('class') && $callable->hasAttribute('method')) {
             $class = $callable->getAttribute('class');
             $method = $callable->getAttribute('method');
+
             return '->'.$methodName.'([' . $this->formatString($class) . ', ' . $this->formatString($method) . '])';
         }
 
@@ -827,6 +835,7 @@ class XmlToPhpConfigConverter
         if ($callable->hasAttribute('service') && $callable->hasAttribute('method')) {
             $service = $callable->getAttribute('service');
             $method = $callable->getAttribute('method');
+
             return '->'.$methodName.'([service(' . $this->formatString($service) . '), ' . $this->formatString($method) . '])';
         }
 
@@ -851,6 +860,7 @@ class XmlToPhpConfigConverter
         // Function form
         if ($callable->hasAttribute('function')) {
             $function = $callable->getAttribute('function');
+
             return '->'.$methodName.'(' . $this->formatString($function) . ')';
         }
 

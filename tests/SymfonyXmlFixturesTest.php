@@ -89,6 +89,7 @@ class SymfonyXmlFixturesTest extends TestCase
             ->files()
             ->name('*.xml')
             ->in(self::FIXTURE_DIR)
+            ->in(__DIR__.'/Fixtures/config/')
             ->sortByName()
         ;
 
