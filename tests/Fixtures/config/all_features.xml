@@ -219,6 +219,7 @@
         </prototype>
 
         <!-- Stack services -->
+        <!-- TODO fix automatic tagging of stack services
         <stack id="app.middleware_stack">
             <service class="App\Middleware\CorsMiddleware" />
             <service class="App\Middleware\SecurityMiddleware" />
@@ -227,6 +228,7 @@
                 <argument type="service" id="logger" />
             </service>
         </stack>
+        -->
 
         <!-- Deprecated service -->
         <service id="app.deprecated_mailer" class="App\Service\LegacyMailer">

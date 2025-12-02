@@ -25,6 +25,7 @@
     "minimum-stability": "dev",
     "require": {
         "php": ">= 8.4",
+        "ext-dom": "*",
         "symfony/finder": "7.4.*",
         "symfony/config": "7.4.*",
         "symfony/console": "7.4.*",

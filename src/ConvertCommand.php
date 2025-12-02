@@ -101,7 +101,7 @@ final class ConvertCommand extends Command
 
             // Write the output file
             file_put_contents($phpPath, $phpContent);
-            $io->writeln( 'Generated: '.$phpPath);
+            $io->writeln('Generated: '.$phpPath);
 
             $this->validateFile($io, $file->getPathname(), $phpPath);
         } catch (\Throwable $e) {
