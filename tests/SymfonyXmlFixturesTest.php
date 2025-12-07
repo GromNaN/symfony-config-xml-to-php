@@ -74,8 +74,8 @@ class SymfonyXmlFixturesTest extends TestCase
         $phpLoader->load($phpFile);
         $phpContainer->getParameterBag()->remove('.container.known_envs');
 
-        $xmlDump = new XmlDumper($xmlContainer)->dump();
-        $phpDump = new XmlDumper($phpContainer)->dump();
+        $xmlDump = (new XmlDumper($xmlContainer))->dump();
+        $phpDump = (new XmlDumper($phpContainer))->dump();
 
         // Fix file paths in the dumps to make them comparable
         $phpDump = preg_replace('/(<tag name="container\.excluded" source="in .*)\.php(&quot;"\/>)/', '\1.xml\2', $phpDump);

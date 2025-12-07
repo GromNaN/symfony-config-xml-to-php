@@ -131,8 +131,8 @@ final class ConvertCommand extends Command
         $phpLoader->load(realpath($phpFile));
         $phpContainer->getParameterBag()->remove('.container.known_envs');
 
-        $xmlDump = new XmlDumper($xmlContainer)->dump();
-        $phpDump = new XmlDumper($phpContainer)->dump();
+        $xmlDump = (new XmlDumper($xmlContainer))->dump();
+        $phpDump = (new XmlDumper($phpContainer))->dump();
 
         if ($xmlDump === $phpDump) {
             return true;
