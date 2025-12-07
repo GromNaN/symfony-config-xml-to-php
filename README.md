@@ -4,20 +4,24 @@ XML configuration format is removed from Symfony 8.0. Bundles must convert their
 
 **⚠️ This script is a best-effort tool and does not guarantee a perfect conversion. Manual review and adjustments may be necessary.**
 
+## Installation
+
+The best way to use this tool is as a standalone project in a separate directory.
+
+    mkdir xml-to-php-converter
+    cd xml-to-php-converter
+
+    composer init --type=project --require='gromnan/symfony-config-xml-to-php:*' --no-interaction
+
 ## Usage
-
-Install:
-
-    composer require --dev gromnan/symfony-config-xml-to-php
 
 Run the script for a directory:
 
-    vendor/bin/convert src/Symfony/Bundle/Resources/config/
-
+    vendor/bin/convert ../src/Symfony/Bundle/Resources/config/
 
 Or for a single file:
 
-    vendor/bin/convert src/Symfony/Bundle/Resources/config/services.xml
+    vendor/bin/convert ../src/Symfony/Bundle/Resources/config/services.xml
 
 ## Contributing
 
