@@ -12,6 +12,7 @@ The best way to use this tool is as a standalone project in a separate directory
     cd xml-to-php-converter
 
     composer init --type=project --require='gromnan/symfony-config-xml-to-php:*' --no-interaction
+    composer install
 
 ## Usage
 
