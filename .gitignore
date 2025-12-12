@@ -1,3 +1,4 @@
 /vendor/
 /output/
 *.cache
+/composer.lock
