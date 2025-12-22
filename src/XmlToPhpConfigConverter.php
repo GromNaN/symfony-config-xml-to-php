@@ -18,22 +18,14 @@ class XmlToPhpConfigConverter
     private int $indentLevel;
 
     /**
-     * Convert an XML configuration file to PHP configuration
+     * Convert an XML configuration to PHP configuration
      */
-    public function convertFile(string $xmlPath): string
+    public function convert(string $xml): string
     {
-        if (!file_exists($xmlPath)) {
-            throw new \RuntimeException(sprintf('File not found: %s', $xmlPath));
-        }
-
-        if (!str_ends_with($xmlPath, '.xml')) {
-            throw new \RuntimeException('The file must have a .xml extension.');
-        }
-
         // Load the XML content with preserving whitespace for comment detection
         $dom = new \DOMDocument();
         $dom->preserveWhiteSpace = true;
-        $dom->load($xmlPath);
+        $dom->loadXML($xml);
 
         $this->validateNamespace($dom);
 
