@@ -78,10 +78,20 @@ final class ConvertCommand extends Command
     private function processFile(SymfonyStyle $io, SplFileInfo $file, ?string $targetDir, XmlToPhpConfigConverter $converter): void
     {
         try {
-            $io->writeln('Converting: '.$file->getPathname());
+            $xmlPath = $file->getPathname();
+
+            $io->writeln('Converting: '.$xmlPath);
+
+            if (!file_exists($xmlPath)) {
+                throw new \RuntimeException(sprintf('File not found: %s', $xmlPath));
+            }
+
+            if (!str_ends_with($xmlPath, '.xml')) {
+                throw new \RuntimeException('The file must have a .xml extension.');
+            }
 
             // Generate PHP content
-            $phpContent = $converter->convertFile($file->getPathname());
+            $phpContent = $converter->convert(\file_get_contents($file->getPathname()));
 
             // Determine the output path
             $phpFilename = $file->getBasename('.xml') . '.php';

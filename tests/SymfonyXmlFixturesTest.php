@@ -62,7 +62,7 @@ class SymfonyXmlFixturesTest extends TestCase
 
         $converter = new XmlToPhpConfigConverter();
         try {
-            $phpContent = $converter->convertFile($xmlFile->getPathname());
+            $phpContent = $converter->convert(\file_get_contents($xmlFile->getPathname()));
         } catch (\Throwable $e) {
             throw new \RuntimeException(sprintf('Failed to convert XML file "%s": %s', $xmlFile->getFilename(), $e->getMessage()), 0, $e);
         }
