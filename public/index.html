@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symfony XML to PHP Config Converter - Prepare for Symfony 8</title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Convert Symfony XML service configurations to PHP format. Essential tool for bundle maintainers preparing for Symfony 8 where XML support is removed.">
+    <meta name="keywords" content="Symfony, XML, PHP, configuration, converter, bundle, Symfony 8, service container">
+    <meta name="author" content="Jérôme Tamarelle">
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Symfony XML to PHP Config Converter">
+    <meta property="og:description" content="Prepare your Symfony bundles for version 8 - Convert XML service configurations to modern PHP format">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://gromnan.github.io/symfony-config-xml-to-php/">
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Symfony XML to PHP Config Converter">
+    <meta name="twitter:description" content="Essential tool for Symfony bundle maintainers - Convert XML configs to PHP for Symfony 8 compatibility">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://gromnan.github.io/symfony-config-xml-to-php/">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+
+        .header-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .header-link {
+            color: white;
+            text-decoration: none;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 500;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+
+        .header-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .benefits-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .benefits-title {
+            text-align: center;
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 25px;
+        }
+
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .benefit-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s;
+        }
+
+        .benefit-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .benefit-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            color: #4CAF50;
+        }
+
+        .benefit-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .benefit-description {
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .installation-section {
+            padding: 30px;
+            background: white;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .installation-title {
+            text-align: center;
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 25px;
+        }
+
+        .installation-methods {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .installation-method {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .method-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+
+        .method-description {
+            color: #666;
+            line-height: 1.5;
+            margin-top: 10px;
+        }
+
+        .converter-container {
+            display: flex;
+            height: 70vh;
+            min-height: 500px;
+        }
+
+        .panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e9ecef;
+            font-weight: 600;
+            color: #495057;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-header .title {
+            font-size: 1.1rem;
+        }
+
+        .copy-btn, .sample-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover, .sample-btn:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+
+        .copy-btn:active, .sample-btn:active {
+            transform: translateY(0);
+        }
+
+        .copy-btn.copied {
+            background: #28a745;
+        }
+
+        .sample-btn {
+            background: #6c757d;
+            margin-left: 10px;
+        }
+
+        .sample-btn:hover {
+            background: #5a6268;
+        }
+
+        textarea {
+            flex: 1;
+            border: none;
+            padding: 20px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.4;
+            resize: none;
+            outline: none;
+            background: #f8f9fa;
+        }
+
+        .xml-panel textarea {
+            background: #fff;
+        }
+
+        .php-panel {
+            border-left: 1px solid #e9ecef;
+        }
+
+        .php-panel textarea {
+            background: #f8f9fa;
+            color: #495057;
+            cursor: pointer;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px 20px;
+            border-top: 1px solid #f5c6cb;
+            font-family: monospace;
+            white-space: pre-wrap;
+            display: none;
+        }
+
+        .status-bar {
+            background: #f8f9fa;
+            padding: 10px 20px;
+            border-top: 1px solid #e9ecef;
+            font-size: 0.9rem;
+            color: #6c757d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .loading {
+            display: none;
+            color: #007bff;
+        }
+
+        .loading.show {
+            display: inline;
+        }
+
+        @media (max-width: 768px) {
+            .converter-container {
+                flex-direction: column;
+                height: auto;
+            }
+
+            .panel {
+                min-height: 300px;
+            }
+
+            .php-panel {
+                border-left: none;
+                border-top: 1px solid #e9ecef;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .header-links {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .installation-methods {
+                grid-template-columns: 1fr;
+            }
+
+            .benefits-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Loading animation */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔄 Symfony XML to PHP Config Converter</h1>
+            <p>Prepare your bundles for Symfony 8 - Convert XML service configurations to modern PHP format</p>
+            <div class="header-links">
+                <a href="https://github.com/gromnan/symfony-config-xml-to-php" class="header-link" target="_blank">
+                    📁 GitHub Repository
+                </a>
+                <a href="https://gromnan.github.io/symfony-config-xml-to-php/" class="header-link" target="_blank">
+                    🌐 Live Demo
+                </a>
+                <a href="#installation" class="header-link">
+                    📦 Installation Guide
+                </a>
+                <a href="#benefits" class="header-link">
+                    ⭐ Bundle Migration Benefits
+                </a>
+            </div>
+        </div>
+
+        <div class="benefits-section" id="benefits">
+            <h2 class="benefits-title">✨ Why Bundle Maintainers Need This Converter</h2>
+            <div class="benefits-grid">
+                <div class="benefit-card">
+                    <div class="benefit-icon">🚨</div>
+                    <div class="benefit-title">Symfony 8 Compatibility</div>
+                    <div class="benefit-description">
+                        XML configuration support is deprecated and will be removed in Symfony 8. Convert your bundles now to ensure future compatibility and avoid breaking changes for your users.
+                    </div>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">📦</div>
+                    <div class="benefit-title">Bundle Migration Made Easy</div>
+                    <div class="benefit-description">
+                        Automatically convert your bundle's XML service definitions to PHP configuration. Maintain backward compatibility while preparing for the future.
+                    </div>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">🔧</div>
+                    <div class="benefit-title">Automated CI/CD Integration</div>
+                    <div class="benefit-description">
+                        Use the CLI tool in your build pipeline to automatically convert XML configs during bundle releases. Perfect for maintaining dual compatibility during transition periods.
+                    </div>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">⚡</div>
+                    <div class="benefit-title">Better Performance</div>
+                    <div class="benefit-description">
+                        PHP configuration files are generally faster to load and parse than XML, which can help reduce your bundle users' application bootstrap time.
+                    </div>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">🎯</div>
+                    <div class="benefit-title">Enhanced Developer Experience</div>
+                    <div class="benefit-description">
+                        Provide your bundle users with better IDE support including autocompletion, syntax highlighting, and static analysis for service configurations.
+                    </div>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">🔍</div>
+                    <div class="benefit-title">Type Safety & Reliability</div>
+                    <div class="benefit-description">
+                        Leverage PHP's type system and class constants for more reliable service configurations. Catch configuration errors at development time rather than runtime.
+                    </div>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">💻</div>
+                    <div class="benefit-title">Quick Testing Tool</div>
+                    <div class="benefit-description">
+                        Use this browser tool to quickly test configuration conversions before implementing them in your bundle. No installation required for rapid prototyping.
+                    </div>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">🌟</div>
+                    <div class="benefit-title">Future-Proof Your Bundle</div>
+                    <div class="benefit-description">
+                        Stay ahead of Symfony evolution. Modern PHP configuration is the recommended approach and will be the only supported format in future Symfony versions.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="installation-section" id="installation">
+            <h2 class="installation-title">📦 Bundle Migration Installation</h2>
+            <div class="installation-methods">
+                <div class="installation-method">
+                    <div class="method-title">🔧 Global Installation (Bundle Development)</div>
+                    <div class="code-block">composer global require gromnan/symfony-config-xml-to-php</div>
+                    <div class="method-description">
+                        Install globally for bundle development and CI/CD integration. Perfect for maintaining multiple bundles and automating the migration process.
+                    </div>
+                    <div class="code-block"># Convert bundle configurations
+xml-to-php-config src/Resources/config/services.xml
+
+# Convert entire config directory
+xml-to-php-config src/Resources/config/
+
+# CI/CD Integration
+xml-to-php-config config/ --output-dir=config/php/</div>
+                </div>
+
+                <div class="installation-method">
+                    <div class="method-title">📦 Bundle Development Dependency</div>
+                    <div class="code-block">composer require --dev gromnan/symfony-config-xml-to-php</div>
+                    <div class="method-description">
+                        Add as a development dependency for your bundle project. Enables team members to easily convert configurations and integrate with build processes.
+                    </div>
+                    <div class="code-block"># Convert bundle services
+./vendor/bin/xml-to-php-config src/Resources/config/services.xml
+
+# Add to composer scripts
+"scripts": {
+    "convert-config": "xml-to-php-config src/Resources/config/"
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="converter-container">
+            <div class="panel xml-panel">
+                <div class="panel-header">
+                    <span class="title">XML Configuration</span>
+                    <button class="sample-btn" onclick="loadSample()">Load Sample</button>
+                </div>
+                <textarea
+                    id="xmlInput"
+                    placeholder="Paste your Symfony XML configuration here...&#10;&#10;Example:&#10;&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;&#10;&lt;container xmlns=&quot;http://symfony.com/schema/dic/services&quot;&#10;           xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;&#10;           xsi:schemaLocation=&quot;http://symfony.com/schema/dic/services&#10;           https://symfony.com/schema/dic/services/services-1.0.xsd&quot;&gt;&#10;    &lt;services&gt;&#10;        &lt;service id=&quot;app.example&quot; class=&quot;App\Service\ExampleService&quot; /&gt;&#10;    &lt;/services&gt;&#10;&lt;/container&gt;"
+                ></textarea>
+            </div>
+
+            <div class="panel php-panel">
+                <div class="panel-header">
+                    <span class="title">PHP Configuration</span>
+                    <button class="copy-btn" id="copyBtn" onclick="copyToClipboard()">Copy to Clipboard</button>
+                </div>
+                <textarea
+                    id="phpOutput"
+                    readonly
+                    placeholder="PHP configuration will appear here automatically..."
+                    onclick="copyToClipboard()"
+                    title="Click to copy to clipboard"
+                ></textarea>
+            </div>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="status-bar">
+            <div>
+                <span class="loading" id="loadingIndicator">
+                    <span class="spinner"></span>Converting...
+                </span>
+                <span id="statusText">Ready</span>
+            </div>
+            <div>
+                <span id="statsText"></span>
+                <span style="margin-left: 20px; color: #28a745; font-size: 0.8rem;">
+                    🚀 Auto-deployed via GitHub Actions
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/XmlToPhpConfigConverter.js"></script>
+    <script>
+        // Global variables
+        let converter;
+        let debounceTimer;
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            converter = new XmlToPhpConfigConverter();
+
+            const xmlInput = document.getElementById('xmlInput');
+            const phpOutput = document.getElementById('phpOutput');
+
+            // Set up auto-conversion
+            xmlInput.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    convertXmlToPhp();
+                }, 300);
+            });
+
+            // Initial conversion if there's any content
+            if (xmlInput.value.trim()) {
+                convertXmlToPhp();
+            }
+        });
+
+        function convertXmlToPhp() {
+            const xmlInput = document.getElementById('xmlInput');
+            const phpOutput = document.getElementById('phpOutput');
+            const errorMessage = document.getElementById('errorMessage');
+            const statusText = document.getElementById('statusText');
+            const statsText = document.getElementById('statsText');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+
+            const xmlContent = xmlInput.value.trim();
+
+            if (!xmlContent) {
+                phpOutput.value = '';
+                errorMessage.style.display = 'none';
+                statusText.textContent = 'Ready';
+                statsText.textContent = '';
+                return;
+            }
+
+            // Show loading
+            loadingIndicator.classList.add('show');
+            statusText.textContent = '';
+            errorMessage.style.display = 'none';
+
+            try {
+                const startTime = performance.now();
+                const phpCode = converter.convert(xmlContent);
+                const endTime = performance.now();
+
+                phpOutput.value = phpCode;
+
+                // Update status
+                const conversionTime = Math.round(endTime - startTime);
+                const lineCount = phpCode.split('\n').length;
+
+                statusText.textContent = 'Conversion successful';
+                statsText.textContent = `${lineCount} lines generated in ${conversionTime}ms`;
+
+                loadingIndicator.classList.remove('show');
+
+            } catch (error) {
+                phpOutput.value = '';
+                errorMessage.textContent = 'Error: ' + error.message;
+                errorMessage.style.display = 'block';
+
+                statusText.textContent = 'Conversion failed';
+                statsText.textContent = '';
+
+                loadingIndicator.classList.remove('show');
+            }
+        }
+
+        async function copyToClipboard() {
+            const phpOutput = document.getElementById('phpOutput');
+            const copyBtn = document.getElementById('copyBtn');
+
+            if (!phpOutput.value.trim()) {
+                return;
+            }
+
+            try {
+                await navigator.clipboard.writeText(phpOutput.value);
+
+                // Visual feedback
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = 'Copied!';
+                copyBtn.classList.add('copied');
+
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+
+            } catch (err) {
+                // Fallback for older browsers
+                phpOutput.select();
+                document.execCommand('copy');
+
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = 'Copied!';
+                copyBtn.classList.add('copied');
+
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            }
+        }
+
+        function loadSample() {
+            const sampleXml = `<?xml version="1.0" encoding="UTF-8"?>
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services
+           https://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <parameters>
+        <parameter key="app.name">My Application</parameter>
+        <parameter key="app.version">1.0.0</parameter>
+        <parameter key="app.debug">true</parameter>
+    </parameters>
+
+    <services>
+        <defaults autowire="true" autoconfigure="true" public="false" />
+
+        <!-- Sample service -->
+        <service id="app.example_service" class="App\\Service\\ExampleService">
+            <argument>%app.name%</argument>
+            <tag name="app.tagged_service" priority="10" />
+        </service>
+
+        <!-- Service with factory -->
+        <service id="app.factory_service" class="App\\Service\\FactoryService">
+            <factory class="App\\Factory\\ServiceFactory" method="create" />
+        </service>
+
+        <!-- Service with configuration -->
+        <service id="app.configured_service" class="App\\Service\\ConfiguredService">
+            <call method="setConfiguration">
+                <argument type="collection">
+                    <argument key="timeout">30</argument>
+                    <argument key="retries">3</argument>
+                </argument>
+            </call>
+        </service>
+
+        <!-- Autowired prototype -->
+        <prototype namespace="App\\Controller\\" resource="../src/Controller/"
+                   autowire="true" autoconfigure="true" public="true">
+            <tag name="controller.service_arguments" />
+        </prototype>
+    </services>
+</container>`;
+
+            document.getElementById('xmlInput').value = sampleXml;
+            convertXmlToPhp();
+        }
+    </script>
+</body>
+</html>
