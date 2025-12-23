@@ -35,5 +35,8 @@
     },
     "require-dev": {
         "phpunit/phpunit": "^11.5 || ^12.5 || ^13.0@dev"
+    },
+    "scripts": {
+        "test": "phpunit"
     }
 }
