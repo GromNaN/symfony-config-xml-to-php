@@ -99,6 +99,7 @@
         <service id="app.mail_logger" class="App\Logger\MailLogger" parent="app.abstract_service">
             <tag name="monolog.logger" channel="mail" />
             <tag name="app.important_service" priority="20" />
+            <tag name="sulu.audience_target_rule" alias="locale" />
             <tag name="kernel.event_listener">
                 <attribute name="event">kernel.exception</attribute>
                 <attribute name="method">onKernelException</attribute>
