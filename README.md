@@ -4,7 +4,13 @@ XML configuration format is removed from Symfony 8.0. Bundles must convert their
 
 **⚠️ This script is a best-effort tool and does not guarantee a perfect conversion. Manual review and adjustments may be necessary.**
 
-## Installation
+## 🌐 Online Browser Tool
+
+For quick conversions and testing, use our browser-based converter:
+
+**👉 [https://gromnan.github.io/symfony-config-xml-to-php/](https://gromnan.github.io/symfony-config-xml-to-php/)**
+
+## 📦 Command Line Installation
 
 The best way to use this tool is as a standalone project in a separate directory.
 
