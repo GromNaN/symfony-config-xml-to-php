@@ -100,6 +100,7 @@
             <tag name="monolog.logger" channel="mail" />
             <tag name="app.important_service" priority="20" />
             <tag name="sulu.audience_target_rule" alias="locale" />
+            <tag name="sulu_preview.object_provider" provider-key="pages"/>
             <tag name="kernel.event_listener">
                 <attribute name="event">kernel.exception</attribute>
                 <attribute name="method">onKernelException</attribute>
