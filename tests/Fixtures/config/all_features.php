@@ -68,6 +68,7 @@ return static function (ContainerConfigurator $container) {
         ->tag('monolog.logger', ['channel' => 'mail'])
         ->tag('app.important_service', ['priority' => 20])
         ->tag('sulu.audience_target_rule', ['alias' => 'locale'])
+        ->tag('sulu_preview.object_provider', ['provider_key' => 'pages', 'provider-key' => 'pages'])
         ->tag('kernel.event_listener', ['event' => 'kernel.exception', 'method' => 'onKernelException', 'priority' => 50]);
 
     $services->set('app.newsletter_manager_factory', \App\Factory\NewsletterManagerFactory::class);

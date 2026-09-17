@@ -904,6 +904,10 @@ class XmlToPhpConfigConverter
                 continue;
             }
 
+            if (str_contains($attrName, '-') && !str_contains($attrName, '_') && !\array_key_exists($normalizedAttrName = str_replace('-', '_', $attrName), $attributes)) {
+                $attributes[$normalizedAttrName] = $this->formatValue($attrNode->nodeValue);
+            }
+
             $attributes[$attrName] = $this->formatValue($attrNode->nodeValue);
         }
 
