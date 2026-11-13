@@ -266,20 +266,33 @@ class XmlToPhpConfigConverter
     private function processServices(\DOMElement $services): string
     {
         $output = '';
+
+        // Defaults and instanceof apply to every service of the file in XML,
+        // but only to the following definitions in the PHP DSL. Emit them first.
         foreach ($services->childNodes as $childNode) {
-            if ($childNode instanceof \DOMElement) {
-                $output .= $this->nl(0);
-                $output .= match ($childNode->nodeName) {
-                    'defaults' => $this->processDefaults($childNode),
-                    'service' => $this->processService($childNode),
-                    'prototype' => $this->processPrototype($childNode),
-                    'instanceof' => $this->processInstanceof($childNode),
-                    'stack' => $this->processStack($childNode),
-                };
+            if ($childNode instanceof \DOMElement && in_array($childNode->nodeName, ['defaults', 'instanceof'], true)) {
+                $output .= $this->nl(0).$this->processServiceChild($childNode);
+            }
+        }
+
+        foreach ($services->childNodes as $childNode) {
+            if ($childNode instanceof \DOMElement && !in_array($childNode->nodeName, ['defaults', 'instanceof'], true)) {
+                $output .= $this->nl(0).$this->processServiceChild($childNode);
             }
         }
 
         return $output;
+    }
+
+    private function processServiceChild(\DOMElement $childNode): string
+    {
+        return match ($childNode->nodeName) {
+            'defaults' => $this->processDefaults($childNode),
+            'service' => $this->processService($childNode),
+            'prototype' => $this->processPrototype($childNode),
+            'instanceof' => $this->processInstanceof($childNode),
+            'stack' => $this->processStack($childNode),
+        };
     }
 
     /**
