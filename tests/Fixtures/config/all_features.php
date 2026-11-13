@@ -30,6 +30,14 @@ return static function (ContainerConfigurator $container) {
         ->tag('app.tagged_by_default')
         ->bind('$defaultParam', 'default value');
 
+    $services->instanceof(\App\Interface\LoggableInterface::class)
+        ->tag('app.loggable')
+        ->call('setLogger', [service('logger')]);
+
+    $services->instanceof(\App\Interface\CacheableInterface::class)
+        ->tag('app.cacheable')
+        ->call('setCache', [service('cache.app')]);
+
     $services->set('app.abstract_service', \App\Service\AbstractService::class)
         ->abstract()
         ->tag('app.abstract')
@@ -126,14 +134,6 @@ return static function (ContainerConfigurator $container) {
         ->bind('$logger', service('logger'))
         ->bind('$importers', tagged_iterator('app.importer'))
         ->bind('$environment', '%kernel.environment%');
-
-    $services->instanceof(\App\Interface\LoggableInterface::class)
-        ->tag('app.loggable')
-        ->call('setLogger', [service('logger')]);
-
-    $services->instanceof(\App\Interface\CacheableInterface::class)
-        ->tag('app.cacheable')
-        ->call('setCache', [service('cache.app')]);
 
     $services->set('app.event_subscriber', \App\EventSubscriber\AppSubscriber::class)
         ->autoconfigure();

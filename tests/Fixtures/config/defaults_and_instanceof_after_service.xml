@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services
+                               http://symfony.com/schema/dic/services/services-1.0.xsd">
+    <services>
+        <!-- Defaults and instanceof apply to services defined before them in XML -->
+        <service id="app.first_service" class="App\FirstService" />
+
+        <defaults autowire="true" autoconfigure="true" public="false">
+            <tag name="app.default_tag" />
+        </defaults>
+
+        <instanceof id="App\Contract" autowire="true">
+            <tag name="app.contract" />
+        </instanceof>
+
+        <service id="app.second_service" class="App\SecondService" />
+    </services>
+</container>
