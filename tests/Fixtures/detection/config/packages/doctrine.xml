@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:doctrine="http://symfony.com/schema/dic/doctrine"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services
+                               https://symfony.com/schema/dic/services/services-1.0.xsd
+                               http://symfony.com/schema/dic/doctrine
+                               https://symfony.com/schema/dic/doctrine/doctrine-1.0.xsd">
+    <doctrine:config>
+        <doctrine:dbal url="mysql://localhost:3306/app" />
+    </doctrine:config>
+</container>

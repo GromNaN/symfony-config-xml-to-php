@@ -15,7 +15,56 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 class XmlToPhpConfigConverter
 {
+    private const SERVICES_NAMESPACE = 'http://symfony.com/schema/dic/services';
+
     private int $indentLevel;
+
+    /**
+     * Tell whether an XML configuration can be converted.
+     *
+     * Routing files and bundle extension configuration (Doctrine, Framework...)
+     * are not service container configurations, so they are not supported.
+     */
+    public function supports(string $xml): bool
+    {
+        if ('' === trim($xml)) {
+            return false;
+        }
+
+        $dom = new \DOMDocument();
+        if (!@$dom->loadXML($xml)) {
+            return false;
+        }
+
+        $root = $dom->documentElement;
+        if (!$root instanceof \DOMElement
+            || 'container' !== $root->localName
+            || self::SERVICES_NAMESPACE !== $root->namespaceURI
+        ) {
+            return false;
+        }
+
+        return !$this->hasForeignElement($root);
+    }
+
+    /**
+     * Bundle extension configuration can be nested in a <when> element,
+     * as allowed by the "foreign" group of the services XSD.
+     */
+    private function hasForeignElement(\DOMElement $element): bool
+    {
+        foreach ($element->childNodes as $childNode) {
+            if (!$childNode instanceof \DOMElement) {
+                continue;
+            }
+
+            if (self::SERVICES_NAMESPACE !== $childNode->namespaceURI || $this->hasForeignElement($childNode)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     /**
      * Convert an XML configuration to PHP configuration
@@ -54,13 +103,11 @@ class XmlToPhpConfigConverter
 
     private function validateNamespace(\DOMDocument $document): void
     {
-        foreach ($document->documentElement->attributes as $attr) {
-            if ($attr->name === 'schemaLocation' && str_contains($attr->value, 'http://symfony.com/schema/dic/services')) {
-                return; // Valid namespace found
-            }
+        if (self::SERVICES_NAMESPACE === $document->documentElement?->namespaceURI) {
+            return;
         }
 
-        throw new \RuntimeException('Invalid or missing XML namespace. Expected "http://symfony.com/schema/dic/services".');
+        throw new \RuntimeException('Invalid or missing XML namespace. Expected "'.self::SERVICES_NAMESPACE.'".');
     }
 
     /**
@@ -96,7 +143,7 @@ class XmlToPhpConfigConverter
      */
     private function processElement(\DOMElement $element): string
     {
-        if ($element->namespaceURI !== 'http://symfony.com/schema/dic/services') {
+        if ($element->namespaceURI !== self::SERVICES_NAMESPACE) {
             throw new \RuntimeException('Converting XML config files containing configuration for extensions is not supported.');
         }
 
