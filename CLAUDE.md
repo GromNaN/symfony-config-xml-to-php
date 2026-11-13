@@ -40,6 +40,5 @@ The CI workflow reinstalls `symfony/dependency-injection` from source (not dist)
 
 ## Known Limitations
 
-- Extension configs (non-core XML namespaces) are not supported
-- Routing and Doctrine config files are excluded from directory scans
+- Extension configs (non-core XML namespaces) are not supported. Routing and bundle extension configuration files (Doctrine, Framework...) are detected and skipped during directory scans; only service container files are converted.
 - Inline services may differ in PHP dumps (Symfony limitation)

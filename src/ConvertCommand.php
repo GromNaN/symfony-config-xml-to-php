@@ -52,7 +52,6 @@ final class ConvertCommand extends Command
             $files = Finder::create()
                 ->files()
                 ->in($source)
-                ->notPath(['/routing/', '/doctrine/'])
                 ->name('*.xml');
 
             foreach ($files as $file) {
@@ -72,15 +71,11 @@ final class ConvertCommand extends Command
 
     /**
      * Process a single XML file and convert it to PHP.
-     *
-     * @return string The PHP file path
      */
     private function processFile(SymfonyStyle $io, SplFileInfo $file, ?string $targetDir, XmlToPhpConfigConverter $converter): void
     {
         try {
             $xmlPath = $file->getPathname();
-
-            $io->writeln('Converting: '.$xmlPath);
 
             if (!file_exists($xmlPath)) {
                 throw new \RuntimeException(sprintf('File not found: %s', $xmlPath));
@@ -90,8 +85,21 @@ final class ConvertCommand extends Command
                 throw new \RuntimeException('The file must have a .xml extension.');
             }
 
+            $xmlContent = \file_get_contents($xmlPath);
+            if (false === $xmlContent) {
+                throw new \RuntimeException(sprintf('Unable to read file: %s', $xmlPath));
+            }
+
+            if (!$converter->supports($xmlContent)) {
+                $io->writeln('Skipping: '.$xmlPath.' (not a service configuration file)');
+
+                return;
+            }
+
+            $io->writeln('Converting: '.$xmlPath);
+
             // Generate PHP content
-            $phpContent = $converter->convert(\file_get_contents($file->getPathname()));
+            $phpContent = $converter->convert($xmlContent);
 
             // Determine the output path
             $phpFilename = $file->getBasename('.xml') . '.php';
